@@ -20,7 +20,7 @@ Please install the below packages to your environment
 
 ### Kubectl
 
-Kubectl should have been installed with Docker Desktop when the Kuberneteses option is enabled. If not see installing Kubectl](https://kubernetes.io/docs/tasks/tools/)
+Kubectl should have been installed with Docker Desktop when the Kuberneteses option is enabled. If not [see installing Kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ### Krew
 
@@ -32,9 +32,7 @@ The Cloud Native Kubectl plugin is needed to generate the Postgres Operator. [Se
 
 ### K9S 
 
-K9S is optional but recommended.
-
-[see installing K9S](https://k9scli.io/topics/install/)
+K9S is optional but recommended.  [See installing K9S](https://k9scli.io/topics/install/)
 
 ### Base64
 
@@ -193,15 +191,6 @@ kubectl create secret generic azure-creds \
   --from-literal=AZURE_STORAGE_CONNECTION_STRING=<connection string>
 ```
 
-
-
-```bash
-kubectl create secret generic azure-creds -n dev --from-literal=AZURE_STORAGE_ACCOUNT="cloudnativebackup" --from-literal=AZURE_STORAGE_KEY="nLmbws7/WkprkH8/PE1EK57boMRQo9sbg+4yqj5cx5KdKoCPpozELzhMG3TFcmL2kSKX3+eKCCUh+AStaYWU/Q==" --from-literal=AZURE_STORAGE_SAS_TOKEN="?sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2024-01-22T00:46:59Z&st=2023-12-21T16:46:59Z&spr=https&sig=HEChGsSDFJFCEhKO%2FKPcnSJ6fph0l3gPAbqbiNIibJ8%3D" --from-literal=AZURE_STORAGE_CONNECTION_STRING="BlobEndpoint=https://cloudnativebackup.blob.core.windows.net/;QueueEndpoint=https://cloudnativebackup.queue.core.windows.net/;FileEndpoint=https://cloudnativebackup.file.core.windows.net/;TableEndpoint=https://cloudnativebackup.table.core.windows.net/;SharedAccessSignature=sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2024-01-22T00:46:59Z&st=2023-12-21T16:46:59Z&spr=https&sig=HEChGsSDFJFCEhKO%2FKPcnSJ6fph0l3gPAbqbiNIibJ8%3D"
- 
-```
-
-
-
 ### Create Kubernetes secret for backups to AWS (Skip for now)
 
 ```bash
@@ -209,11 +198,6 @@ kubectl create secret generic azure-creds -n dev --from-literal=AZURE_STORAGE_AC
 kubectl create secret generic aws-credentials -n dev \
   --from-literal=ACCESS_KEY_ID='<access key goes here>' \
   --from-literal=ACCESS_SECRET_KEY='<secret key goes here>'
-```
-
-
-```bash
-kubectl create secret generic aws-credentials -n dev --from-literal=ACCESS_KEY_ID='AKIA2RLSJDYK6NE74ZEH' --from-literal=ACCESS_SECRET_KEY='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'
 ```
 
 Now add a label to our secret with the AWS account the secret belongs to.
