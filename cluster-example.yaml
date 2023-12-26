@@ -1,0 +1,84 @@
+apiVersion: v1
+data:
+  # postgres
+  password: cG9zdGdyZXM=
+  # app
+  username: YXBw
+kind: Secret
+metadata:
+  name: cluster-example-app-user
+type: kubernetes.io/basic-auth
+---
+apiVersion: v1
+data:
+  # postgres
+  password: cG9zdGdyZXM=
+  # must always be postgres
+  username: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  name: cluster-example-superuser
+type: kubernetes.io/basic-auth
+---
+# Example of PostgreSQL cluster
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: cluster-example
+spec:
+  instances: 3
+  # Parameters and pg_hba configuration will be appended
+  # to the default ones to make the cluster work
+  postgresql:
+    parameters:
+      max_worker_processes: "60"
+    pg_hba:
+      # To access through TCP/IP you will need to get username
+      # and password from the secret cluster-example-app-user
+      - host all all all scram-sha-256
+
+  # Example of rolling update strategy:
+  # - unsupervised: automated update of the primary once all
+  #                 replicas have been upgraded (default)
+  # - supervised: requires manual supervision to perform
+  #               the switchover of the primary
+  primaryUpdateStrategy: unsupervised
+  # Require 2Gi of space
+  storage:
+    size: 2Gi
+    # pvcTemplate:
+    #   accessModes:
+    #     - ReadWriteOnce
+    #   resources:
+    #     requests:
+    #       storage: 2Gi
+    #   storageClassName: postgres-storage
+    #   #persistentVolumeName: pv-1
+    #   volumeMode: Filesystem
+  monitoring:
+    enablePodMonitor: true
+  enableSuperuserAccess: true
+  superuserSecret:
+    name: cluster-example-superuser
+  bootstrap:
+    initdb:
+      database: app
+      owner: app
+      secret:
+        name: cluster-example-app-user
+  backup:
+    barmanObjectStore:
+      destinationPath: "https://cloudnativebackup.blob.core.windows.net/cloudnativebackup"
+      azureCredentials:
+        # connectionString:
+        #   name: azure-creds
+        #   key: AZURE_CONNECTION_STRING
+        storageAccount:
+          name: azure-creds
+          key: AZURE_STORAGE_ACCOUNT
+        # storageKey:
+        #   name: azure-creds
+        #   key: AZURE_STORAGE_KEY
+        storageSasToken:
+          name: azure-creds
+          key: AZURE_STORAGE_SAS_TOKEN
