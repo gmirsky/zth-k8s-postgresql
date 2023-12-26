@@ -4,7 +4,7 @@ Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from begining to end.
 
 NOTE: This is still a work in progress
 
-Revision Date: `24-December-2023`
+Revision Date: `26-December-2023`
 
 ------
 
@@ -16,7 +16,11 @@ The commands below were tested in a Zsh/Bash command line environment. Some of t
 
 ## Prerequisites
 
-Please install the below packages to your environment
+### A cloud storage account
+
+A Azure or AWS account to store the cluster backups into along with the proper infrastucture such as am AWS S3 bucket or a Azure storage account.
+
+Please install the below packages to your environment. 
 
 ### Kubectl
 
@@ -28,7 +32,7 @@ The Cloud Native Kubectl plugin is needed to generate the Postgres Operator. [Se
 
 ### Helm
 
- [see installing Helm](https://helm.sh/docs/intro/install/)
+ Helm is required for chart installation. [See installing Helm](https://helm.sh/docs/intro/install/)
 
 ### K9S 
 
@@ -57,12 +61,6 @@ Install base64 (on Windows) using PowerShell
 # Install base64
 Install-Module -Name Base64
 ```
-
-### pgAdmin 
-
-??? To be taken out in favor of installing a pgAdmin Pod ????
-
-[see installing pgAdmin](https://www.pgadmin.org/download/) to install pgAdmin on your system so you can access the PostgreSQL cluster.
 
 ## Install the cnpg plugin using Krew
 
@@ -127,11 +125,8 @@ kube-system   replicaset.apps/coredns-5dd5756b68   2         2         2       4
 We will only need the dev namespace for this tutorial. The higher environments, qa, beta and prod are all optional.
 
 ```bash
-# Create namespaces for dev, qa, beta and prod
+# Create a new namespace called 'dev'
 kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
-kubectl create namespace qa --dry-run=client -o yaml | kubectl apply -f -
-kubectl create namespace beta --dry-run=client -o yaml | kubectl apply -f -
-kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 ```bash
@@ -139,14 +134,11 @@ kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
 kubectl get namespaces --all-namespaces --show-labels                                                     
 
 NAME              STATUS   AGE   LABELS
-beta              Active   20s   kubernetes.io/metadata.name=beta
 default           Active   45h   kubernetes.io/metadata.name=default
 dev               Active   40s   kubernetes.io/metadata.name=dev
 kube-node-lease   Active   45h   kubernetes.io/metadata.name=kube-node-lease
 kube-public       Active   45h   kubernetes.io/metadata.name=kube-public
 kube-system       Active   45h   kubernetes.io/metadata.name=kube-system
-prod              Active   10s   kubernetes.io/metadata.name=prod
-qa                Active   29s   kubernetes.io/metadata.name=qa
 ```
 
 ## Generate and install the CloudNativePG Operator
@@ -176,11 +168,65 @@ NAME                      READY   UP-TO-DATE   AVAILABLE   AGE   LABELS
 cnpg-controller-manager   1/1     1            1           24s   app.kubernetes.io/name=cloudnative-pg
 ```
 
-## Deploy a PostgreSQL Clusters
+## Secrets
 
-We will deploy two PostgreSQL clusters, one in the dev namespace and one in the qa namespace (optional if you are short on cumputing resources). The clusters will have a master and two replicas. One replica is for read-only transactions and the other replica is used by the continuous backup facilites.
+First, let's start with provisioning secrets to our Kubernetes cluster that the other resources that we will provision will utilize.
 
-Create Kubernetes secret for backups to Azure (Skip for now)
+Passwords are base64 encoded.
+
+To encode a password use the [Base64 Encode website](https://www.base64encode.org) so you do not have to worry about character sets and other frustrating nuances of Base64 encodeing. Just make sure that your destination character set is UTF-8 and the destination new line seperator is set to LF(Unix).
+
+### Example cluster application user secret
+
+For our example cluster, we will create a `app` user using the `cluster-example-app-user.yaml` file.  Our sample password is `postgres` and our sample user name is `app`. 
+
+```yaml
+apiVersion: v1
+data:
+  # postgres
+  password: cG9zdGdyZXM=
+  # app
+  username: YXBw
+kind: Secret
+metadata:
+  name: cluster-example-app-user
+type: kubernetes.io/basic-auth
+```
+
+To apply the secret to our `dev` namespace we use the following command.
+
+```bash
+# Create the cluster-example-app-user secret
+kubectl apply -f cluster-example-app-user.yaml -n dev
+```
+
+### Example cluster super user secret
+
+Create a super user for the PostgreSQL cluster to executer elevated privileged functions. Here, our user must be postgres and the password, again, is postgres for our example.
+
+```yaml
+apiVersion: v1
+data:
+  # postgres
+  password: cG9zdGdyZXM=
+  # must always be postgres
+  username: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  name: cluster-example-superuser
+type: kubernetes.io/basic-auth
+```
+
+To apply the secret to our `dev` namespace we use the following command.
+
+```bash
+# Create the cluster-example-superuser secret
+kubectl apply -f cluster-example-superuser.yaml -n dev
+```
+
+### Create Kubernetes secret for backups to Azure 
+
+Another way to create credentials is directly from the kubectl command line. Here we will create our Azure credentials for our Kubernetes PostgreSQL cluster to back up data to. For obvious reasons, we do not want to save this information to a YAML file, so we  enter the credentials only from the command line.
 
 ```bash
 # Create a kubernetes secret in namespace dev to hold our Azure credentials
@@ -190,6 +236,15 @@ kubectl create secret generic azure-creds \
   --from-literal=AZURE_STORAGE_SAS_TOKEN=<SAS token> \
   --from-literal=AZURE_STORAGE_CONNECTION_STRING=<connection string>
 ```
+
+Now let's add a label to the secret to denote what tenant it belongs to.
+
+```bash
+# Label the secret
+kubectl label secret aws-creds -n dev "azure-tenant=cdfd8274-8888-dddd-9999-3333bbb00000"    
+```
+
+To do: get Azure secrets 
 
 ### Create Kubernetes secret for backups to AWS (Skip for now)
 
@@ -204,7 +259,7 @@ Now add a label to our secret with the AWS account the secret belongs to.
 
 ```bash
 # Label the secret
-kubectl label secret aws-creds -n dev "aws-account=566646271983"                                         
+kubectl label secret aws-creds -n dev "aws-account=99999999999"                                         
 ```
 
 ```bash
@@ -225,6 +280,140 @@ kubectl get secret aws-creds -o 'jsonpath={.data.ACCESS_KEY_ID}' -n dev | base64
 # Cerify that you can decrypt the AWS access secret key
 kubectl get secret aws-creds -o 'jsonpath={.data.ACCESS_SECRET_KEY}' -n dev | base64 --decode
 ```
+
+### Create secret for pgAdmin
+
+Create a pgadmin-secret.yaml file to store our secret for pgAdmin with a pasword of `SuperSecret`
+
+```yaml
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: pgadmin
+data:
+  pgadmin-password: U3VwZXJTZWNyZXQ=
+```
+
+Apply the secret to our `dev` namespace
+
+```bash
+#create the secret pgadmin in the dev namespace
+kubectl apply -f pgadmin-secret.yaml -n dev
+```
+
+## Getting secrets from the Kubernetes cluster
+
+We can easily get the secrets from the YAML that we created the cluster with but in the event the deployment YAML is not available to you, you can retrieve the secrets from Kubernetes (provided you have the rights to do so).
+
+In our cluster deplyment YAML we configured the sercrets for cluster-example-app-user for the application using the following YAML.
+
+```yaml
+apiVersion: v1
+data:
+  password: Q2hAbmdlTTNOb3chCg==
+  username: YXBw
+kind: Secret
+metadata:
+  name: cluster-example-app-user
+type: kubernetes.io/basic-auth
+```
+
+As mentioned befor, the passwords are obfuscated using base64.
+
+We did the same thing with cluster administrator (user id: postgres):
+
+```yaml
+apiVersion: v1
+data:
+  password: Q2hAbmdlTTNOb3chCg==
+  # must always be postgres
+  username: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  name: cluster-example-superuser
+type: kubernetes.io/basic-auth
+```
+
+To get the above password we would use the following command:
+
+```bash
+# Decode the base64 variable
+echo Q2hAbmdlTTNOb3chCg== | base64 --decode                                                               
+postgres
+```
+
+We can use the same command to decode the username too.
+
+### Getting secrets from Kubernetes secrets
+
+To log into the PostgreSQL cluster. We need to get the password from the Kubernetes secrets. Let's list all the secrets for the namespace dev. Each namespace has its own set of secrets.
+
+```bash
+# Get a listing of available Kubernetes secrets in the namespace dev
+kubectl get secrets  -n dev 
+```
+
+We should get output like this:
+
+```bash
+NAME                          TYPE                       DATA   AGE
+cluster-example-app-user      kubernetes.io/basic-auth   2      70m
+cluster-example-ca            Opaque                     2      70m
+cluster-example-replication   kubernetes.io/tls          2      70m
+cluster-example-server        kubernetes.io/tls          2      70m
+cluster-example-superuser     kubernetes.io/basic-auth   2      70m
+```
+
+The two secrets we are interested in are: `cluster-example-app-user`, `cluster-example-superuser`
+
+### cluster-example-app-user credentials
+
+To get the user id for the application user contained in `cluster-example-app-user` in namespace dev we would use the following command:
+
+```bash
+# Get the user id from the secret cluster-example-app-user in namespace dev
+kubectl get secret cluster-example-app-user -o 'jsonpath={.data.username}' -n dev | base64 --decode       
+app%
+```
+
+**NOTE**: Always ignore the percent sign at the end of the line.
+
+To get the password for the user app contained in `cluster-example-app-user` in namespace dev we would use the following command:
+
+```bash
+# Get the password from the secret cluster-example-app-user in namespace dev 
+kubectl get secret cluster-example-app-user -o 'jsonpath={.data.password}' -n dev | base64 --decode       
+postgres
+```
+
+### cluster-example-superuser credentials
+
+#### cluster-example-superuser
+
+To get the superuser id contained in `cluster-example-superuser` in namespace dev we would use the following command:
+
+```bash
+# Get the username from secret cluster-example-superuser in namespace dev
+kubectl get secret cluster-example-superuser -o 'jsonpath={.data.username}' -n dev | base64 --decode
+postgres%
+```
+
+**NOTE**: Always ignore the percent sign at the end of the line.
+
+To get the password for the superuser contained in `cluster-example-superuser` in namespace dev we would use the following command:
+
+```bash
+# Get the password from secret cluster-example-superuser in namespace dev
+kubectl get secret cluster-example-superuser -o 'jsonpath={.data.password}' -n dev | base64 --decode
+postgres
+```
+
+## Deploy a PostgreSQL Clusters
+
+Now that all the secrets are in place we will now deploy a PostgreSQL clusters in the `dev` namespace.
+
+The cluster will have a master and two replicas. One replica is for read-only transactions and the other replica is used by the continuous backup facilites.
 
 ### Deploy cluster for namespace dev
 
@@ -417,109 +606,6 @@ Prometheus will automatically pick up monitorng data from any database in the Ku
     enablePodMonitor: true
 ```
 
-## Secrets
-
-We can easily get the secrets from the YAML that we created the cluster with but in the even the deployment YAML is not available to you, you can retrieve the secrets from Kubernetes (provided you have the rights to do so).
-
-In our cluster deplyment YAML we configured the sercrets for cluster-example-app-user for the application using the following YAML.
-
-```yaml
-apiVersion: v1
-data:
-  password: Q2hAbmdlTTNOb3chCg==
-  username: YXBw
-kind: Secret
-metadata:
-  name: cluster-example-app-user
-type: kubernetes.io/basic-auth
-```
-
-The passwords are obfuscated using base64.
-
-We did the same thing with cluster administrator (user id: postgres):
-
-```yaml
-apiVersion: v1
-data:
-  password: Q2hAbmdlTTNOb3chCg==
-  # must always be postgres
-  username: cG9zdGdyZXM=
-kind: Secret
-metadata:
-  name: cluster-example-superuser
-type: kubernetes.io/basic-auth
-```
-
-To get the above password we would use the following command:
-
-```bash
-echo Q2hAbmdlTTNOb3chCg== | base64 --decode                                                               
-postgres
-```
-
-We can use the same command to decode the username too.
-
-### Getting secrets from Kubernetes secrets
-
-To log into the PostgreSQL cluster. We need to get the password from the Kubernetes secrets. Let's list all the secrets for the namespace dev. Each namespace has its own set of secrets.
-
-```bash
-# Get a listing of available Kubernetes secrets in the namespace
-kubectl get secrets  -n dev 
-```
-
-We should get output like this:
-
-```bash
-NAME                          TYPE                       DATA   AGE
-cluster-example-app-user      kubernetes.io/basic-auth   2      70m
-cluster-example-ca            Opaque                     2      70m
-cluster-example-replication   kubernetes.io/tls          2      70m
-cluster-example-server        kubernetes.io/tls          2      70m
-cluster-example-superuser     kubernetes.io/basic-auth   2      70m
-```
-
-The two secrets we are interested in are: `cluster-example-app-user`, `cluster-example-superuser`
-
-### cluster-example-app-user credentials
-
-To get the user id for the application user contained in `cluster-example-app-user` in namespace dev we would use the following command:
-
-```bash
-# Get the user id from cluster-example-app-user in namespace dev
-kubectl get secret cluster-example-app-user -o 'jsonpath={.data.username}' -n dev | base64 --decode       
-app%
-```
-
-**NOTE**: Always ignore the percent sign at the end of the line.
-
-To get the password for the user app contained in `cluster-example-app-user` in namespace dev we would use the following command:
-
-```bash
-kubectl get secret cluster-example-app-user -o 'jsonpath={.data.password}' -n dev | base64 --decode       
-postgres
-```
-
-### cluster-example-superuser credentials
-
-#### cluster-example-superuser
-
-To get the superuser id contained in `cluster-example-superuser` in namespace dev we would use the following command:
-
-```bash
-kubectl get secret cluster-example-superuser -o 'jsonpath={.data.username}' -n dev | base64 --decode
-postgres%
-```
-
-**NOTE**: Always ignore the percent sign at the end of the line.
-
-To get the password for the superuser contained in `cluster-example-superuser` in namespace dev we would use the following command:
-
-```bash
-kubectl get secret cluster-example-superuser -o 'jsonpath={.data.password}' -n dev | base64 --decode
-postgres
-```
-
 Get the cluster services  in namespace dev.
 
 ```bash
@@ -534,6 +620,65 @@ cluster-example-rw   ClusterIP   10.106.64.120   <none>        5432/TCP   4h28m
 ```
 
 We want the read/write service which would be `cluster-example-rw`
+
+### Deploy pgAdmin to the cluster (Work in progress)
+
+Create a ConfigMap for pgAdmin
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: pgadmin-config
+data:
+ servers.json: |
+   {
+       "Servers": {
+         "1": {
+           "Name": "PostgreSQL DB",
+           "Group": "Servers",
+           "Port": 5432,
+           "Username": "postgres",
+           "Host": "postgres.domain.com",
+           "SSLMode": "prefer",
+           "MaintenanceDB": "postgres"
+         }
+       }
+   }
+```
+
+Deploy the ConfigMap to the dev namespace
+
+```bash
+# Deploy the configmap to the dev namespace
+kubectl apply -f pgadmin-configmap.yaml -n dev
+```
+
+Using pgadmin-service create the service with the following yaml.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+ name: pgadmin-service
+spec:
+ ports:
+ - protocol: TCP
+   port: 80
+   targetPort: http
+ selector:
+   app: pgadmin
+ type: NodePort
+```
+
+Apply the service to namespace dev
+
+```bash
+# apply the service to namespace dev
+kubectl apply -f pgadmin-service.yaml
+```
+
+
 
 ### Ingress Controller (Work in progress)
 
