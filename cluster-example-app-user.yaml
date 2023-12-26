@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  # postgres
+  password: cG9zdGdyZXM=
+  # app
+  username: YXBw
+kind: Secret
+metadata:
+  name: cluster-example-app-user
+type: kubernetes.io/basic-auth
