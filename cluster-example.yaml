@@ -1,25 +1,3 @@
-apiVersion: v1
-data:
-  # postgres
-  password: cG9zdGdyZXM=
-  # app
-  username: YXBw
-kind: Secret
-metadata:
-  name: cluster-example-app-user
-type: kubernetes.io/basic-auth
----
-apiVersion: v1
-data:
-  # postgres
-  password: cG9zdGdyZXM=
-  # must always be postgres
-  username: cG9zdGdyZXM=
-kind: Secret
-metadata:
-  name: cluster-example-superuser
-type: kubernetes.io/basic-auth
----
 # Example of PostgreSQL cluster
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
