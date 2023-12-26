@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  # postgres
+  password: cG9zdGdyZXM=
+  # must always be postgres
+  username: cG9zdGdyZXM=
+kind: Secret
+metadata:
+  name: cluster-example-superuser
+type: kubernetes.io/basic-auth
