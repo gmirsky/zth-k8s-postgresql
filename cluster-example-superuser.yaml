@@ -7,4 +7,7 @@ data:
 kind: Secret
 metadata:
   name: cluster-example-superuser
+  labels: {
+    "secret-type" : "database-super-user"
+  }
 type: kubernetes.io/basic-auth
