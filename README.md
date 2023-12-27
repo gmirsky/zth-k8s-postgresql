@@ -2,9 +2,11 @@
 
 Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from begining to end.
 
+This is a fully detailed step-by-step process tutorial with minimal skills assumed.
+
 NOTE: This is still a work in progress
 
-Revision Date: `26-December-2023`
+Revision Date: `27-December-2023`
 
 ------
 
@@ -18,7 +20,186 @@ The commands below were tested in a Zsh/Bash command line environment. Some of t
 
 ### A cloud storage account
 
-A Azure or AWS account to store the cluster backups into along with the proper infrastucture such as am AWS S3 bucket or a Azure storage account.
+A Azure or AWS account to store the cluster autoamted and on-demand backups into. Please refer to the sections below to provision the proper infrastucture such as an AWS S3 bucket or a Azure storage account.
+
+For this tutorial we will use a Azure Storage Account Container. 
+
+#### Azure Blob Storage
+
+For Azure, if you do not have a resource group or storage account already set up you can use the following [Azure CLI ](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) commands:
+
+```bash
+# log into your Azure account
+az login
+```
+
+Take note of the value in `homeTenantID` in the JSON output. (IDs have been redacted.)
+
+```json
+[
+  {
+    "cloudName": "AzureCloud",
+    "homeTenantId": "********-8496-4ddd-a787-************",
+    "id": "********-014c-4a5e-95fe-************",
+    "isDefault": true,
+    "managedByTenants": [],
+    "name": "Pay-as-you-go",
+    "state": "Enabled",
+    "tenantId": "********-8496-4ddd-a787-************",
+    "user": {
+      "name": "********@gmail.com",
+      "type": "user"
+    }
+  }
+]
+```
+
+Create the Azure Resource group
+
+```bash
+# create the Azure resource group that will host the Storage Account
+az group create -l eastus -n cluster-example-rg
+```
+
+You should get `"provisioningState": "Succeeded"` in the output JSON
+
+```json
+{
+  "id": "/subscriptions/********-014c-4a5e-95fe-************/resourceGroups/cluster-example-rg",
+  "location": "eastus",
+  "managedBy": null,
+  "name": "cluster-example-rg",
+  "properties": {
+    "provisioningState": "Succeeded"
+  },
+  "tags": null,
+  "type": "Microsoft.Resources/resourceGroups"
+}
+```
+
+Create the Azure Storage Account. (Note: You cannot use dashes in the storage account name.)
+
+```bash
+# create the Azure Storage Account
+az storage account create -n clusterexamplesa -g cluster-example-rg -l eastus
+```
+
+Verify in the volumous JSON output that `"provisioningState": "Succeeded"`, is present to determine if your storage account was created.
+
+Create a container in the storage account we just created.
+
+```bash
+# create the Azure Storage Account Container
+az storage container create -n clusterexample --account-name clusterexamplesa
+```
+
+If everything goes correctly we should get the following JSON.
+
+```json
+{
+  "created": true
+}
+```
+
+Let's list the Azure Storage Containers in our Azure Storage Account
+
+```bash
+# List Azure storage account containers
+az storage container list --account-name clusterexamplesa
+```
+
+The output should look like this:
+
+```json
+[
+  {
+    "deleted": null,
+    "encryptionScope": {
+      "defaultEncryptionScope": "$account-encryption-key",
+      "preventEncryptionScopeOverride": false
+    },
+    "immutableStorageWithVersioningEnabled": false,
+    "metadata": null,
+    "name": "clusterexample",
+    "properties": {
+      "etag": "\"0x8DC06E6A573068B\"",
+      "hasImmutabilityPolicy": false,
+      "hasLegalHold": false,
+      "lastModified": "2023-12-27T14:18:06+00:00",
+      "lease": {
+        "duration": null,
+        "state": "available",
+        "status": "unlocked"
+      },
+      "publicAccess": null
+    },
+    "version": null
+  }
+]
+```
+
+Now we have to generate the Azure Shared Access Signature (SAS) for the container so that our cluster can store its automated and on demand backup to the Azure Storage Account Blob Container we just created.
+
+```bash
+# Get the storage account key list for our storage account
+az storage account keys list --account-name clusterexamplesa --resource-group cluster-example-rg
+```
+
+You should get a access key back in the following form. (The keys below have been redacted.) Make a note of this key. You will need it later.
+
+```
+[
+  {
+    "creationTime": "2023-12-27T17:51:34.896182+00:00",
+    "keyName": "key1",
+    "permissions": "FULL",
+    "value": "y+U5+9dS************************************************************Ryx0k4+ASt0iuHlQ=="
+  },
+  {
+    "creationTime": "2023-12-27T14:03:44.634621+00:00",
+    "keyName": "key2",
+    "permissions": "FULL",
+    "value": "TfdkgSUY**********************************************************sQwHJozs+AStQwEe0g=="
+  }
+]
+```
+
+To get the first key's value use the following:
+
+```bash
+az storage account keys list --account-name clusterexamplesa --resource-group cluster-example-rg --query "[0].value"
+
+"y+U5+9dS************************************************************Ryx0k4+ASt0iuHlQ=="
+```
+
+Save the key for later use.
+
+#### AWS S3 Bucket
+
+Install the [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and configure as per the AWS documentation, if you have not already done so.
+
+Using the AWS CLI with the default profile create the AWS S3 bucket. Choose a AWS region that makes sense for your deployment and change the name of the S3 bucket. S3 buckets must be unique. You can add your account number to the end of the bucket name to make it unique. 
+
+To get your AWS account number use the following command:
+
+```bash
+# Get your AWS Account number
+aws sts get-caller-identity --query Account --output text
+```
+
+To get a list of available AWS regions for your account use the following command:
+
+```bash
+# Get a list of regions for your AWS account
+aws ec2 describe-regions --output table
+```
+
+To provision the AWS S3 bucket, use the following command
+
+```bash
+# Provision the AWS S3 bucket
+aws s3api create-bucket --bucket cluster-example-backup --region us-east-1 --output json --profile default
+```
 
 Please install the below packages to your environment. 
 
@@ -26,17 +207,64 @@ Please install the below packages to your environment.
 
 Kubectl should have been installed with Docker Desktop when the Kuberneteses option is enabled. If not [see installing Kubectl](https://kubernetes.io/docs/tasks/tools/)
 
+```bash
+# get the current version of our kubectl client and the version of our kubernetes cluster
+kubectl version                                                                                           
+
+Client Version: v1.29.0
+Kustomize Version: v5.0.4-0.20230601165947-6ce0bf390ce3
+Server Version: v1.28.2
+```
+
 ### Krew
 
 The Cloud Native Kubectl plugin is needed to generate the Postgres Operator. [See installing Krew on how to install this plug in.](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) 
+
+```bash
+# get the version of the krew kubectl plugin
+kubectl krew version                                                                                     
+
+OPTION            VALUE
+GitTag            v0.4.4
+GitCommit         343e657d
+IndexURI          https://github.com/kubernetes-sigs/krew-index.git
+BasePath          /Users/gregorymirsky/.krew
+IndexPath         /Users/gregorymirsky/.krew/index/default
+InstallPath       /Users/gregorymirsky/.krew/store
+BinPath           /Users/gregorymirsky/.krew/bin
+DetectedPlatform  darwin/arm64
+```
 
 ### Helm
 
  Helm is required for chart installation. [See installing Helm](https://helm.sh/docs/intro/install/)
 
+```bash
+# verify the Helm version installed
+helm version                                                                                             
+
+version.BuildInfo{Version:"v3.13.3", GitCommit:"c8b948945e52abba22ff885446a1486cb5fd3474", GitTreeState:"clean", GoVersion:"go1.21.5"}
+```
+
 ### K9S 
 
 K9S is optional but recommended.  [See installing K9S](https://k9scli.io/topics/install/)
+
+```bash
+# check k9s version
+k9s version
+
+ ____  __.________
+|    |/ _/   __   \______
+|      < \____    /  ___/
+|    |  \   /    /\___ \
+|____|__ \ /____//____  >
+        \/            \/
+
+Version:    0.30.4
+Commit:     34da44b441598c68fb6de1571f2a38f74d66bb01
+Date:       n/a
+```
 
 ### Base64
 
@@ -62,6 +290,18 @@ Install base64 (on Windows) using PowerShell
 Install-Module -Name Base64
 ```
 
+Verify the Base64 version
+
+```bash
+# check the base64 version
+base64 --version                                                                                         
+
+base64 1.5
+Last revised: 10th June 2007
+The latest version is always available
+at http://www.fourmilab.ch/webtools/base64
+```
+
 ## Install the cnpg plugin using Krew
 
 ```bash
@@ -71,8 +311,8 @@ kubectl krew install cnpg
 
 ```bash
 # Check the cnpg plugin and check the version
-kubectl cnpg version                                                                                     
-Build: {Version:1.21.1 Commit:27f62cac Date:2023-11-03}
+kubectl cnpg version
+Build: {Version:1.22.0 Commit:86b9dc80 Date:2023-12-21}
 ```
 
 Updating krew and cnpg plugins (if plugins are already installed.)
@@ -146,7 +386,7 @@ kube-system       Active   45h   kubernetes.io/metadata.name=kube-system
 Generate the operator yaml manifest. The `-n` flag defines the namespace where the operator is deployed to and the replicas flag tells us how many replicas of the operator should be installed (note: number of operator replicas - not postgres instances). For our demonstration we will pick one node but in production we would likely have 3, one for each cloud availability zone in the region.
 
 ```bash
-# Generate the YAML manifest to deploy
+# Generate the YAML manifest with 1 node to deploy
 kubectl cnpg install generate -n devops-system --replicas 1 > operator-manifests.yaml
 ```
 
@@ -155,6 +395,26 @@ kubectl cnpg install generate -n devops-system --replicas 1 > operator-manifests
 # No namespace is required since it is coded in the generated YAML file
 kubectl apply -f operator-manifests.yaml
 ```
+
+You should get output like this:
+
+```bash
+namespace/devops-system created
+customresourcedefinition.apiextensions.k8s.io/backups.postgresql.cnpg.io created
+customresourcedefinition.apiextensions.k8s.io/clusters.postgresql.cnpg.io created
+customresourcedefinition.apiextensions.k8s.io/poolers.postgresql.cnpg.io created
+customresourcedefinition.apiextensions.k8s.io/scheduledbackups.postgresql.cnpg.io created
+serviceaccount/cnpg-manager created
+clusterrole.rbac.authorization.k8s.io/cnpg-manager created
+clusterrolebinding.rbac.authorization.k8s.io/cnpg-manager-rolebinding created
+configmap/cnpg-default-monitoring created
+service/cnpg-webhook-service created
+deployment.apps/cnpg-controller-manager created
+mutatingwebhookconfiguration.admissionregistration.k8s.io/cnpg-mutating-webhook-configuration created
+validatingwebhookconfiguration.admissionregistration.k8s.io/cnpg-validating-webhook-configuration created
+```
+
+Check the status of our deployment:
 
 ```bash
 # Check to see if the CloudNativePG Operator deployment deployed successfully
@@ -181,7 +441,6 @@ To encode a password use the [Base64 Encode website](https://www.base64encode.or
 For our example cluster, we will create a `app` user using the `cluster-example-app-user.yaml` file.  Our sample password is `postgres` and our sample user name is `app`. 
 
 ```yaml
-apiVersion: v1
 data:
   # postgres
   password: cG9zdGdyZXM=
@@ -190,6 +449,9 @@ data:
 kind: Secret
 metadata:
   name: cluster-example-app-user
+  labels: {
+    "secret-type" : "app-user"
+  }
 type: kubernetes.io/basic-auth
 ```
 
@@ -198,6 +460,16 @@ To apply the secret to our `dev` namespace we use the following command.
 ```bash
 # Create the cluster-example-app-user secret
 kubectl apply -f cluster-example-app-user.yaml -n dev
+```
+
+Check to see if our secret is there:
+
+```bash
+# Check the secrets in the dev namespace
+kubectl get secrets -n dev 
+
+NAME                       TYPE                       DATA   AGE
+cluster-example-app-user   kubernetes.io/basic-auth   2      18s
 ```
 
 ### Example cluster super user secret
@@ -214,6 +486,9 @@ data:
 kind: Secret
 metadata:
   name: cluster-example-superuser
+  labels: {
+    "secret-type" : "database-super-user"
+  }
 type: kubernetes.io/basic-auth
 ```
 
@@ -224,29 +499,50 @@ To apply the secret to our `dev` namespace we use the following command.
 kubectl apply -f cluster-example-superuser.yaml -n dev
 ```
 
-### Create Kubernetes secret for backups to Azure 
+Verify that the secret we just applied was created:
 
-Another way to create credentials is directly from the kubectl command line. Here we will create our Azure credentials for our Kubernetes PostgreSQL cluster to back up data to. For obvious reasons, we do not want to save this information to a YAML file, so we  enter the credentials only from the command line.
+```bash
+# Check the secrets in the dev namespace
+kubectl get secrets -n dev
+
+NAME                        TYPE                       DATA   AGE
+cluster-example-app-user    kubernetes.io/basic-auth   2      2m17s
+cluster-example-superuser   kubernetes.io/basic-auth   2      3s
+```
+
+### Create Kubernetes secret for backups to Azure (if using Azure)
+
+Another way to create credentials is directly from the kubectl command line. 
+
+Here we will create our Azure credentials for our Kubernetes PostgreSQL cluster to back up data to. For obvious reasons, we do not want to save this information to a YAML file, so we  enter the credentials only from the command line.
 
 ```bash
 # Create a kubernetes secret in namespace dev to hold our Azure credentials
-kubectl create secret generic azure-creds \
-  --from-literal=AZURE_STORAGE_ACCOUNT=<storage account name> \
-  --from-literal=AZURE_STORAGE_KEY=<storage account key> \
-  --from-literal=AZURE_STORAGE_SAS_TOKEN=<SAS token> \
-  --from-literal=AZURE_STORAGE_CONNECTION_STRING=<connection string>
+kubectl create secret generic azure-creds -n dev \
+  --from-literal=AZURE_STORAGE_ACCOUNT="<storage account name>" \
+  --from-literal=AZURE_STORAGE_KEY="<Storage Key save previously>" 
 ```
 
-Now let's add a label to the secret to denote what tenant it belongs to.
+Confirm the creation of the secret
+
+```bash
+ # Get the secrets in namespace dev 
+ kubectl get secrets -n dev 
+
+NAME                        TYPE                       DATA   AGE
+azure-creds                 Opaque                     2      11s
+cluster-example-app-user    kubernetes.io/basic-auth   2      94m
+cluster-example-superuser   kubernetes.io/basic-auth   2      91m
+```
+
+Now let's add a label to the secret to denote what tenant it belongs to. (Note: Use your Azure tenant ID)
 
 ```bash
 # Label the secret
-kubectl label secret aws-creds -n dev "azure-tenant=cdfd8274-8888-dddd-9999-3333bbb00000"    
+kubectl label secret azure-creds -n dev "azure-tenant=00000000-0000-0000-0000-000000000000"    
 ```
 
-To do: get Azure secrets 
-
-### Create Kubernetes secret for backups to AWS (Skip for now)
+### Create Kubernetes secret for backups to AWS (if using AWS)
 
 ```bash
 # Create a kubernetes secret in namespace dev to hold our AWS credentials
@@ -255,30 +551,61 @@ kubectl create secret generic aws-credentials -n dev \
   --from-literal=ACCESS_SECRET_KEY='<secret key goes here>'
 ```
 
+Confirm the creation of the secret
+
+```bash
+kubectl get secrets -n dev
+
+NAME                        TYPE                       DATA   AGE
+aws-credentials             Opaque                     2      14s
+cluster-example-app-user    kubernetes.io/basic-auth   2      109m
+cluster-example-superuser   kubernetes.io/basic-auth   2      107m
+```
+
 Now add a label to our secret with the AWS account the secret belongs to.
 
 ```bash
 # Label the secret
-kubectl label secret aws-creds -n dev "aws-account=99999999999"                                         
+kubectl label secret aws-credentials -n dev "aws-account=000000000000"                                         
 ```
 
-```bash
-# Get the secrets in namespace dev
-kubectl get secrets  -n dev  --show-labels                                                               
+#### Secret Labels
 
-NAME        TYPE     DATA   AGE     LABELS
-aws-creds   Opaque   2      6m15s   aws-account=566646271983
+List out the secrets with their labels.
+
+```bash
+# Get the secrets with their labels in namespace dev
+kubectl get secrets  -n dev  --show-labels
+
+NAME                        TYPE                       DATA   AGE    LABELS
+aws-credentials             Opaque                     2      13m    aws-account=000000000000
+azure-creds                 Opaque                     2      28m    azure-tenant=00000000-0000-0000-0000-000000000000
+cluster-example-app-user    kubernetes.io/basic-auth   2      122m   secret-type=app-user
+cluster-example-superuser   kubernetes.io/basic-auth   2      120m   secret-type=database-super-user
 ```
 
+#### Secret Verification
 
-Verify that the keys were stored properly and can be decrypted.
+Verify that the keys were stored properly and can be decrypted and they produce the values you provided.
+
+For the Azure credentials, use the following commands:
 
 ```bash
-# Verify that you can decrypt the AWS access key secret
-kubectl get secret aws-creds -o 'jsonpath={.data.ACCESS_KEY_ID}' -n dev | base64 --decode
+# Verify that you can decrypt the Azure Storage Account in namespace dev
+kubectl get secret azure-creds -o 'jsonpath={.data.AZURE_STORAGE_ACCOUNT}' -n dev | base64 --decode
 
-# Cerify that you can decrypt the AWS access secret key
-kubectl get secret aws-creds -o 'jsonpath={.data.ACCESS_SECRET_KEY}' -n dev | base64 --decode
+# Verify that you can decrypt the Azure Storage Account in namespace dev
+kubectl get secret azure-creds -o 'jsonpath={.data.AZURE_STORAGE_SAS_TOKEN}' -n dev | base64 --decode
+```
+
+For the AWS credentials, use the following commands:
+
+```bash
+# Verify that you can decrypt the AWS access key secret in namespace dev
+kubectl get secret aws-credentials -o 'jsonpath={.data.ACCESS_KEY_ID}' -n dev | base64 --decode
+
+# Cerify that you can decrypt the AWS access secret key in namespace dev
+kubectl get secret aws-credentials -o 'jsonpath={.data.ACCESS_SECRET_KEY}' -n dev | base64 --decode
 ```
 
 ### Create secret for pgAdmin
@@ -291,6 +618,9 @@ kind: Secret
 type: Opaque
 metadata:
   name: pgadmin
+  labels: {
+    "secret-type" : "pgadmin-user"
+  }
 data:
   pgadmin-password: U3VwZXJTZWNyZXQ=
 ```
@@ -298,118 +628,84 @@ data:
 Apply the secret to our `dev` namespace
 
 ```bash
-#create the secret pgadmin in the dev namespace
+# Create the secret pgadmin in the dev namespace
 kubectl apply -f pgadmin-secret.yaml -n dev
 ```
 
-## Getting secrets from the Kubernetes cluster
-
-We can easily get the secrets from the YAML that we created the cluster with but in the event the deployment YAML is not available to you, you can retrieve the secrets from Kubernetes (provided you have the rights to do so).
-
-In our cluster deplyment YAML we configured the sercrets for cluster-example-app-user for the application using the following YAML.
-
-```yaml
-apiVersion: v1
-data:
-  password: Q2hAbmdlTTNOb3chCg==
-  username: YXBw
-kind: Secret
-metadata:
-  name: cluster-example-app-user
-type: kubernetes.io/basic-auth
-```
-
-As mentioned befor, the passwords are obfuscated using base64.
-
-We did the same thing with cluster administrator (user id: postgres):
-
-```yaml
-apiVersion: v1
-data:
-  password: Q2hAbmdlTTNOb3chCg==
-  # must always be postgres
-  username: cG9zdGdyZXM=
-kind: Secret
-metadata:
-  name: cluster-example-superuser
-type: kubernetes.io/basic-auth
-```
-
-To get the above password we would use the following command:
+List the secrets with their labels
 
 ```bash
-# Decode the base64 variable
-echo Q2hAbmdlTTNOb3chCg== | base64 --decode                                                               
-postgres
+# Get the serets in namespace dev with their labels
+kubectl get secrets  -n dev  --show-labels
+
+NAME                        TYPE                       DATA   AGE     LABELS
+aws-credentials             Opaque                     2      35m     aws-account=000000000000
+azure-creds                 Opaque                     2      50m     azure-tenant=00000000-0000-0000-0000-000000000000
+cluster-example-app-user    kubernetes.io/basic-auth   2      144m    secret-type=app-user
+cluster-example-superuser   kubernetes.io/basic-auth   2      142m    secret-type=database-super-user
+pgadmin                     Opaque                     1      3m50s   secret-type=pgadmin-user
 ```
 
-We can use the same command to decode the username too.
-
-### Getting secrets from Kubernetes secrets
-
-To log into the PostgreSQL cluster. We need to get the password from the Kubernetes secrets. Let's list all the secrets for the namespace dev. Each namespace has its own set of secrets.
+Use the following to check that we can get decode the secret. We should get a value of `SuperSecret`
 
 ```bash
-# Get a listing of available Kubernetes secrets in the namespace dev
-kubectl get secrets  -n dev 
-```
-
-We should get output like this:
-
-```bash
-NAME                          TYPE                       DATA   AGE
-cluster-example-app-user      kubernetes.io/basic-auth   2      70m
-cluster-example-ca            Opaque                     2      70m
-cluster-example-replication   kubernetes.io/tls          2      70m
-cluster-example-server        kubernetes.io/tls          2      70m
-cluster-example-superuser     kubernetes.io/basic-auth   2      70m
-```
-
-The two secrets we are interested in are: `cluster-example-app-user`, `cluster-example-superuser`
-
-### cluster-example-app-user credentials
-
-To get the user id for the application user contained in `cluster-example-app-user` in namespace dev we would use the following command:
-
-```bash
-# Get the user id from the secret cluster-example-app-user in namespace dev
-kubectl get secret cluster-example-app-user -o 'jsonpath={.data.username}' -n dev | base64 --decode       
-app%
-```
-
-**NOTE**: Always ignore the percent sign at the end of the line.
-
-To get the password for the user app contained in `cluster-example-app-user` in namespace dev we would use the following command:
-
-```bash
-# Get the password from the secret cluster-example-app-user in namespace dev 
-kubectl get secret cluster-example-app-user -o 'jsonpath={.data.password}' -n dev | base64 --decode       
-postgres
-```
-
-### cluster-example-superuser credentials
-
-#### cluster-example-superuser
-
-To get the superuser id contained in `cluster-example-superuser` in namespace dev we would use the following command:
-
-```bash
-# Get the username from secret cluster-example-superuser in namespace dev
-kubectl get secret cluster-example-superuser -o 'jsonpath={.data.username}' -n dev | base64 --decode
-postgres%
-```
-
-**NOTE**: Always ignore the percent sign at the end of the line.
-
-To get the password for the superuser contained in `cluster-example-superuser` in namespace dev we would use the following command:
-
-```bash
-# Get the password from secret cluster-example-superuser in namespace dev
-kubectl get secret cluster-example-superuser -o 'jsonpath={.data.password}' -n dev | base64 --decode
-postgres
+# Get the pfAdmin password fron the Kubernetes secret.
+kubectl get secret pgadmin -o 'jsonpath={.data.pgadmin-password}' -n dev | base64 --decode
 ```
 
 ## Deploy a PostgreSQL Clusters
+
+Before deploying, check that cluster-example.yaml has the proper configuration for your environment. 
+
+### Backup to Azure
+
+For Azure make sure that the `destinationPath` in the `backup` section matches the path to your container. Use the combination of credentials that suits your environment the best. 
+
+In order to access the storage account, you will need one of the following combinations of credentials:
+
+- [**Connection String**](https://docs.microsoft.com/en-us/azure/storage/common/storage-configure-connection-string#configure-a-connection-string-for-an-azure-storage-account)
+- **Storage account name** and [**Storage account access key**](https://docs.microsoft.com/en-us/azure/storage/common/storage-account-keys-manage)
+- **Storage account name** and [**Storage account SAS Token**](https://docs.microsoft.com/en-us/azure/storage/blobs/sas-service-create)
+- **Storage account name** and [**Azure AD Workload Identity**](https://azure.github.io/azure-workload-identity/docs/introduction.html) properly configured.
+
+```yaml
+  backup:
+    barmanObjectStore:
+      destinationPath: "https://clusterexamplesa.blob.core.windows.net/cloudnativebackup"
+      azureCredentials:
+        # connectionString:
+        #   name: azure-creds
+        #   key: AZURE_CONNECTION_STRING
+        storageAccount:
+          name: azure-creds
+          key: AZURE_STORAGE_ACCOUNT
+        storageKey:
+          name: azure-creds
+          key: AZURE_STORAGE_KEY
+        # storageSasToken:
+        #   name: azure-creds
+        #   key: AZURE_STORAGE_SAS_TOKEN
+
+```
+
+### Backup to AWS
+
+The backup section needs to be changed to the following:
+
+```yaml
+  backup:
+    barmanObjectStore:
+      destinationPath: "s3://BUCKET_NAME/path/to/folder"
+      s3Credentials:
+        accessKeyId:
+          name: aws-creds
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: aws-creds
+          key: ACCESS_SECRET_KEY
+```
+
+
 
 Now that all the secrets are in place we will now deploy a PostgreSQL clusters in the `dev` namespace.
 
@@ -527,20 +823,6 @@ cluster-example-2  29 MB          0/8000000    Standby (async)   OK      BestEff
 cluster-example-3  29 MB          0/8000000    Standby (async)   OK      BestEffort  1.22.0           docker-desktop
 ```
 
-### Deploy cluster for namespace qa (optional)
-
-You can skip this section if you are shor on computing resources
-
-```bash
-# Deploy a Postgresql cluster into the qa namespace
-kubectl apply -f cluster-example.yaml -n qa
-```
-
-```bash
-# Check the status of the cluster
-kubectl cnpg status -n qa cluster-example -v
-```
-
 ## Monitoring
 
 ### Install monitoring
@@ -548,6 +830,9 @@ kubectl cnpg status -n qa cluster-example -v
 ```bash
 # Check to see what Helm charts are in your local Helm repository
 helm repo list
+
+# Update the Helm charts in your repositories (if any)
+helm repo update
 
 # Add the Prometheus Community Helm chart to your local Helm repository
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -566,7 +851,7 @@ kubectl port-forward -n devops-system svc/prometheus-community-kube-prometheus 9
 
 In our case, the URL would be [localhost on port 9090](http://localhost:9090)
 
-Hit Control-C to stop the port forwarding so we can proceed to the next steps
+Hit `Control-C` to stop the port forwarding so we can proceed to the next steps
 
 ### Install monitoring rules
 
@@ -593,7 +878,7 @@ Log in with the user ID `admin` and the password `prom-operator` using the [loca
 
 ![dashboards](./images/dashboards.png)
 
-Open the CloudNativePG dashboard.
+Open the CloudNativePG dashboard. It may take a few minutes for the data to populate
 
 ![qa-monitoring](./images/qa-monitoring.png)
 
@@ -619,7 +904,140 @@ cluster-example-rw   ClusterIP   10.106.64.120   <none>        5432/TCP   4h28m
 
 ```
 
-We want the read/write service which would be `cluster-example-rw`
+We want the read/write service which would be `cluster-example-rw`. Remember that for later.
+
+### Initiate an manual back up
+
+Let's initiate a manual back up of the cluster by using the YAML in `cluster-example-on-demand-backup.yaml`
+
+Backups occur from the most in-sync replica. If neither replica is in-sync then the backup is made from the primary node.
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: cluster-example-on-demand-backup
+spec:
+  method: barmanObjectStore
+  cluster:
+    name: cluster-example
+```
+
+```bash
+# Initiate a manual back up on the postgres cluster in namespace dev
+kubectl apply -f cluster-example-on-demand-backup.yaml -n dev
+```
+
+```bash
+# Check the status of the on-demand backup
+kubectl describe backup cluster-example-on-demand-backup -n dev 
+
+Name:         cluster-example-on-demand-backup
+Namespace:    dev
+Labels:       <none>
+Annotations:  <none>
+API Version:  postgresql.cnpg.io/v1
+Kind:         Backup
+Metadata:
+  Creation Timestamp:  2023-12-27T20:13:28Z
+  Generation:          1
+  Resource Version:    48184
+  UID:                 9035cd3d-87c3-4a09-a751-47d4ee946ee2
+Spec:
+  Cluster:
+    Name:  cluster-example
+  Method:  barmanObjectStore
+Status:
+  Azure Credentials:
+    Storage Account:
+      Key:   AZURE_STORAGE_ACCOUNT
+      Name:  azure-creds
+    Storage Key:
+      Key:           AZURE_STORAGE_KEY
+      Name:          azure-creds
+  Backup Id:         20231227T201329
+  Backup Name:       backup-20231227201328
+  Begin LSN:         0/60538C8
+  Begin Wal:         000000010000000000000006
+  Destination Path:  https://clusterexamplesa.blob.core.windows.net/cloudnativebackup
+  End LSN:           0/8000000
+  End Wal:           000000010000000000000008
+  Instance ID:
+    Container ID:  docker://fe66eab7eca14d0094b4ad102658501ef220d6f003c56d820ef75673fd2d6a42
+    Pod Name:      cluster-example-2
+  Method:          barmanObjectStore
+  Phase:           completed
+  Server Name:     cluster-example
+  Started At:      2023-12-27T20:13:29Z
+  Stopped At:      2023-12-27T20:13:30Z
+Events:
+  Type    Reason     Age   From                   Message
+  ----    ------     ----  ----                   -------
+  Normal  Starting   44s   cloudnative-pg-backup  Starting backup for cluster cluster-example
+  Normal  Starting   44s   instance-manager       Backup started
+  Normal  Completed  42s   instance-manager       Backup completed
+```
+
+### Create a scheduled backup of the database cluster
+
+We will use the `cluster-example-scheduled-backup.yaml`file  to create a scheduled backup job. This will create a backup every two hours at five minutes past the hour.
+
+```yaml
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: cluster-example-scheduled-backup
+spec:
+  #  Backup every two hours at 5 minutes past the hour
+  schedule: "0 5 */2 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: cluster-example
+```
+
+```bash
+# Initiate an automated back up on the postgres cluster in namespace dev
+kubectl apply -f cluster-example-scheduled-backup.yaml -n dev 
+```
+
+```bash
+# Check the status of the scheduled backup 
+kubectl describe scheduledbackup cluster-example-scheduled-backup -n dev 
+
+Name:         cluster-example-scheduled-backup
+Namespace:    dev
+Labels:       <none>
+Annotations:  <none>
+API Version:  postgresql.cnpg.io/v1
+Kind:         ScheduledBackup
+Metadata:
+  Creation Timestamp:  2023-12-27T20:27:09Z
+  Generation:          1
+  Resource Version:    49698
+  UID:                 648c0bad-c669-4901-84ff-fa6de28db5d8
+Spec:
+  Backup Owner Reference:  self
+  Cluster:
+    Name:    cluster-example
+  Method:    barmanObjectStore
+  Schedule:  0 5 */2 * * *
+Status:
+  Last Check Time:  2023-12-27T20:27:09Z
+Events:
+  Type    Reason          Age    From                            Message
+  ----    ------          ----   ----                            -------
+  Normal  BackupSchedule  3m35s  cloudnative-pg-scheduledbackup  Scheduled first backup by 2023-12-27 22:05:00 +0000 UTC
+```
+
+
+
+### Get Services
+
+kubectl get services -n dev -l cnpg.io/cluster=cluster-example
+
+kubectl get services -n devops-system -l app.kubernetes.io/name=grafana
+
+
 
 ### Deploy pgAdmin to the cluster (Work in progress)
 
