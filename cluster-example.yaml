@@ -46,7 +46,7 @@ spec:
         name: cluster-example-app-user
   backup:
     barmanObjectStore:
-      destinationPath: "https://cloudnativebackup.blob.core.windows.net/cloudnativebackup"
+      destinationPath: "https://clusterexamplesa.blob.core.windows.net/cloudnativebackup"
       azureCredentials:
         # connectionString:
         #   name: azure-creds
@@ -54,9 +54,9 @@ spec:
         storageAccount:
           name: azure-creds
           key: AZURE_STORAGE_ACCOUNT
-        # storageKey:
-        #   name: azure-creds
-        #   key: AZURE_STORAGE_KEY
-        storageSasToken:
+        storageKey:
           name: azure-creds
-          key: AZURE_STORAGE_SAS_TOKEN
+          key: AZURE_STORAGE_KEY
+        # storageSasToken:
+        #   name: azure-creds
+        #   key: AZURE_STORAGE_SAS_TOKEN
