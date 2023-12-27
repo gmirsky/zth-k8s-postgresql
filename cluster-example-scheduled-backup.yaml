@@ -1,0 +1,10 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: cluster-example-scheduled-backup
+spec:
+  #  Backup every two hours at 5 minutes past the hour
+  schedule: "0 5 */2 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: cluster-example
