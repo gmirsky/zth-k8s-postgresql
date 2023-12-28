@@ -60,3 +60,4 @@ spec:
         # storageSasToken:
         #   name: azure-creds
         #   key: AZURE_STORAGE_SAS_TOKEN
+    retentionPolicy: "30d"
