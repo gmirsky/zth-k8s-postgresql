@@ -134,7 +134,7 @@ The output should look like this:
 ]
 ```
 
-Now we have to generate the Azure Shared Access Signature (SAS) for the container so that our cluster can store its automated and on demand backup to the Azure Storage Account Blob Container we just created.
+Now we have to get theAzure key for the Storage Account so that our cluster can store its automated and on demand backup to the Azure Storage Account Blob Container we just created.
 
 ```bash
 # Get the storage account key list for our storage account
@@ -168,7 +168,7 @@ az storage account keys list --account-name clusterexamplesa --resource-group cl
 "y+U5+9dS************************************************************Ryx0k4+ASt0iuHlQ=="
 ```
 
-Save the key for later use.
+Save this key for later use.
 
 #### AWS S3 Bucket
 
@@ -974,6 +974,45 @@ Events:
   Normal  BackupSchedule  3m35s  cloudnative-pg-scheduledbackup  Scheduled first backup by 2023-12-27 22:05:00 +0000 UTC
 ```
 
+### Display data backed up in Azure
+
+You can display the data backed up in your Azure Storage Account Container with the following AZ CLI command:
+
+```bash
+az storage blob list --account-name clusterexamplesa --container-name cloudnativebackup --query "[*].name" --only-show-errors 
+
+[
+  "cluster-example/base/20231228T140031/backup.info",
+  "cluster-example/base/20231228T140031/data.tar",
+  "cluster-example/base/20231228T140500/backup.info",
+  "cluster-example/base/20231228T140500/data.tar",
+  "cluster-example/base/20231228T160500/backup.info",
+  "cluster-example/base/20231228T160500/data.tar",
+  "cluster-example/wals/0000000100000000/000000010000000000000001",
+  "cluster-example/wals/0000000100000000/000000010000000000000002",
+  "cluster-example/wals/0000000100000000/000000010000000000000003",
+  "cluster-example/wals/0000000100000000/000000010000000000000003.00000028.backup",
+  "cluster-example/wals/0000000100000000/000000010000000000000004",
+  "cluster-example/wals/0000000100000000/000000010000000000000005",
+  "cluster-example/wals/0000000100000000/000000010000000000000005.00000028.backup",
+  "cluster-example/wals/0000000100000000/000000010000000000000006",
+  "cluster-example/wals/0000000100000000/000000010000000000000007",
+  "cluster-example/wals/0000000100000000/000000010000000000000008",
+  "cluster-example/wals/0000000100000000/000000010000000000000009",
+  "cluster-example/wals/0000000100000000/00000001000000000000000A",
+  "cluster-example/wals/0000000100000000/00000001000000000000000B",
+  "cluster-example/wals/0000000100000000/00000001000000000000000C",
+  "cluster-example/wals/0000000100000000/00000001000000000000000D",
+  "cluster-example/wals/0000000100000000/00000001000000000000000E"
+```
+
+### Display data backed in AWS
+
+```bash
+# List data from S3 bucket used to store backups
+aws s3 ls s3://example-bucket/path/to/object --region us-east-1 --output json --profile default
+```
+
 ### Expose the database externally
 
 Often, we will want to expose the database to other servers outside of the Kubernetes cluster.  There are many ways to do this depending upon your Kubernetes deployment and organization standards. Many cloud based Kubernetes clusters come with their own proprietary ingress controllers. For this example we will use the ingress-nginx controller to expose our database.
@@ -1010,7 +1049,8 @@ While we are at it let's map the Grafana/Prometheus front end too to the ingress
 
 ```bash
 # Get the Grafana service
-kubectl get services -n devops-system -l app.kubernetes.io/name=grafana                                                                                   ─╯
+kubectl get services -n devops-system -l app.kubernetes.io/name=grafana
+
 NAME                           TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
 prometheus-community-grafana   ClusterIP   10.103.92.32   <none>        80/TCP    119m
 ```
@@ -1019,7 +1059,15 @@ Install the Nginx controller with the `dev/cluster-example-rw` service mapped to
 
 ```bash
 # Install the Nginx Ingress controller
-helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.replicaCount=2 --set tcp.5432="dev/cluster-example-rw:5432" --set tcp.5433="dev/cluster-example-ro:5432" --set tcp.5434="dev/cluster-example-r:5432" --set tcp.8083="devops-system/prometheus-community-grafana:80"
+helm upgrade --install ingress-nginx ingress-nginx \
+ --repo https://kubernetes.github.io/ingress-nginx \
+ --namespace ingress-nginx \
+ --create-namespace \
+ --set controller.replicaCount=2 \
+ --set tcp.5432="dev/cluster-example-rw:5432" \
+ --set tcp.5433="dev/cluster-example-ro:5432" \
+ --set tcp.5434="dev/cluster-example-r:5432" \
+ --set tcp.8083="devops-system/prometheus-community-grafana:80"
 ```
 
 Your output should look something like this:
