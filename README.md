@@ -796,6 +796,8 @@ kubectl port-forward -n devops-system svc/prometheus-community-kube-prometheus 9
 
 In our case, the URL would be [localhost on port 9090](http://localhost:9090)
 
+![prometheus](./images/prometheus.png)
+
 Hit `Control-C` to stop the port forwarding so we can proceed to the next steps
 
 ### Install monitoring rules
