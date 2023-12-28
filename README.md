@@ -1,12 +1,8 @@
-# Zero to hero: Kubernetes PostgreSQL cluster
+# Zero to Hero: A Kubernetes PostgreSQL cluster
 
-Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from begining to end.
+Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from begining to end. This is a fully detailed step-by-step process tutorial with minimal skills assumed. 
 
-This is a fully detailed step-by-step process tutorial with minimal skills assumed.
-
-NOTE: This is still a work in progress
-
-Revision Date: `27-December-2023`
+Revision Date: `28-December-2023`
 
 ------
 
@@ -22,7 +18,7 @@ The commands below were tested in a Zsh/Bash command line environment. Some of t
 
 A Azure or AWS account to store the cluster autoamted and on-demand backups into. Please refer to the sections below to provision the proper infrastucture such as an AWS S3 bucket or a Azure storage account.
 
-For this tutorial we will use a Azure Storage Account Container. 
+For this tutorial we will use a Azure Storage Account Container but we will provide instructions to use a AWS S3 bucket too.
 
 #### Azure Blob Storage
 
@@ -246,25 +242,9 @@ helm version
 version.BuildInfo{Version:"v3.13.3", GitCommit:"c8b948945e52abba22ff885446a1486cb5fd3474", GitTreeState:"clean", GoVersion:"go1.21.5"}
 ```
 
-### K9S 
+### pgAdmin 
 
-K9S is optional but recommended.  [See installing K9S](https://k9scli.io/topics/install/)
-
-```bash
-# check k9s version
-k9s version
-
- ____  __.________
-|    |/ _/   __   \______
-|      < \____    /  ___/
-|    |  \   /    /\___ \
-|____|__ \ /____//____  >
-        \/            \/
-
-Version:    0.30.4
-Commit:     34da44b441598c68fb6de1571f2a38f74d66bb01
-Date:       n/a
-```
+pgAdmin should be installed on your host system to connect to the databases. [See installing pgAdmin](https://www.pgadmin.org/download/)
 
 ### Base64
 
@@ -330,6 +310,16 @@ kubectl krew upgrade cnpg
 ## Starting off
 
 Starting with a clean Kubernetes cluster, let's get an idea of what is running already in the cluster before we begin.
+
+```bash
+# See what nodes we have running in our docker desktop kubernetes cluster
+kubectl get nodes 
+
+NAME             STATUS   ROLES           AGE   VERSION
+docker-desktop   Ready    control-plane   16h   v1.28.2
+```
+
+Now let's see what is already running on our node.
 
 ```bash
 # See what is running in our Kubernetes cluseter
@@ -514,7 +504,9 @@ cluster-example-superuser   kubernetes.io/basic-auth   2      3s
 
 Another way to create credentials is directly from the kubectl command line. 
 
-Here we will create our Azure credentials for our Kubernetes PostgreSQL cluster to back up data to. For obvious reasons, we do not want to save this information to a YAML file, so we  enter the credentials only from the command line.
+Here we will create our Azure credentials for our Kubernetes PostgreSQL cluster to back up data to. For obvious reasons, we do not want to save this information to a YAML file, so we  enter the credentials only from the command line. 
+
+The Azure Storage Key is the value you saved from above when you created the storage account and container.
 
 ```bash
 # Create a kubernetes secret in namespace dev to hold our Azure credentials
@@ -595,7 +587,7 @@ For the Azure credentials, use the following commands:
 kubectl get secret azure-creds -o 'jsonpath={.data.AZURE_STORAGE_ACCOUNT}' -n dev | base64 --decode
 
 # Verify that you can decrypt the Azure Storage Account in namespace dev
-kubectl get secret azure-creds -o 'jsonpath={.data.AZURE_STORAGE_SAS_TOKEN}' -n dev | base64 --decode
+kubectl get secret azure-creds -o 'jsonpath={.data.AZURE_STORAGE_KEY}' -n dev | base64 --decode
 ```
 
 For the AWS credentials, use the following commands:
@@ -608,52 +600,7 @@ kubectl get secret aws-credentials -o 'jsonpath={.data.ACCESS_KEY_ID}' -n dev | 
 kubectl get secret aws-credentials -o 'jsonpath={.data.ACCESS_SECRET_KEY}' -n dev | base64 --decode
 ```
 
-### Create secret for pgAdmin
-
-Create a pgadmin-secret.yaml file to store our secret for pgAdmin with a pasword of `SuperSecret`
-
-```yaml
-apiVersion: v1
-kind: Secret
-type: Opaque
-metadata:
-  name: pgadmin
-  labels: {
-    "secret-type" : "pgadmin-user"
-  }
-data:
-  pgadmin-password: U3VwZXJTZWNyZXQ=
-```
-
-Apply the secret to our `dev` namespace
-
-```bash
-# Create the secret pgadmin in the dev namespace
-kubectl apply -f pgadmin-secret.yaml -n dev
-```
-
-List the secrets with their labels
-
-```bash
-# Get the serets in namespace dev with their labels
-kubectl get secrets  -n dev  --show-labels
-
-NAME                        TYPE                       DATA   AGE     LABELS
-aws-credentials             Opaque                     2      35m     aws-account=000000000000
-azure-creds                 Opaque                     2      50m     azure-tenant=00000000-0000-0000-0000-000000000000
-cluster-example-app-user    kubernetes.io/basic-auth   2      144m    secret-type=app-user
-cluster-example-superuser   kubernetes.io/basic-auth   2      142m    secret-type=database-super-user
-pgadmin                     Opaque                     1      3m50s   secret-type=pgadmin-user
-```
-
-Use the following to check that we can get decode the secret. We should get a value of `SuperSecret`
-
-```bash
-# Get the pfAdmin password fron the Kubernetes secret.
-kubectl get secret pgadmin -o 'jsonpath={.data.pgadmin-password}' -n dev | base64 --decode
-```
-
-## Deploy a PostgreSQL Clusters
+## Deploy a PostgreSQL Cluster
 
 Before deploying, check that cluster-example.yaml has the proper configuration for your environment. 
 
@@ -704,8 +651,6 @@ The backup section needs to be changed to the following:
           name: aws-creds
           key: ACCESS_SECRET_KEY
 ```
-
-
 
 Now that all the secrets are in place we will now deploy a PostgreSQL clusters in the `dev` namespace.
 
@@ -766,7 +711,7 @@ Name  Database Size  Current LSN  Replication role  Status  QoS  Manager Version
 Error: container not found
 ```
 
-This is what you should see when the cluster has been deployed:
+This is what you should see when the cluster has been fully deployed:
 
 ```bash
 kubectl cnpg status -n dev cluster-example                                                                                                                                               ─╯
@@ -834,7 +779,7 @@ helm repo list
 # Update the Helm charts in your repositories (if any)
 helm repo update
 
-# Add the Prometheus Community Helm chart to your local Helm repository
+# Add the Prometheus Community Helm chart to your local Helm repository (if not already installed)
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 
 # Install Prometheus monitoring using the Helm chart we just added
@@ -1029,185 +974,165 @@ Events:
   Normal  BackupSchedule  3m35s  cloudnative-pg-scheduledbackup  Scheduled first backup by 2023-12-27 22:05:00 +0000 UTC
 ```
 
+### Expose the database externally
 
+Often, we will want to expose the database to other servers outside of the Kubernetes cluster.  There are many ways to do this depending upon your Kubernetes deployment and organization standards. Many cloud based Kubernetes clusters come with their own proprietary ingress controllers. For this example we will use the ingress-nginx controller to expose our database.
 
-### Get Services
+**Important**: Ingresses are only required to expose HTTP and HTTPS traffic. While the NGINX Ingress controller can, not all Ingress objects can expose arbitrary ports or protocols like port 5432.
 
-kubectl get services -n dev -l cnpg.io/cluster=cluster-example
-
-kubectl get services -n devops-system -l app.kubernetes.io/name=grafana
-
-
-
-### Deploy pgAdmin to the cluster (Work in progress)
-
-Create a ConfigMap for pgAdmin
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
- name: pgadmin-config
-data:
- servers.json: |
-   {
-       "Servers": {
-         "1": {
-           "Name": "PostgreSQL DB",
-           "Group": "Servers",
-           "Port": 5432,
-           "Username": "postgres",
-           "Host": "postgres.domain.com",
-           "SSLMode": "prefer",
-           "MaintenanceDB": "postgres"
-         }
-       }
-   }
-```
-
-Deploy the ConfigMap to the dev namespace
-
-```bash
-# Deploy the configmap to the dev namespace
-kubectl apply -f pgadmin-configmap.yaml -n dev
-```
-
-Using pgadmin-service create the service with the following yaml.
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
- name: pgadmin-service
-spec:
- ports:
- - protocol: TCP
-   port: 80
-   targetPort: http
- selector:
-   app: pgadmin
- type: NodePort
-```
-
-Apply the service to namespace dev
-
-```bash
-# apply the service to namespace dev
-kubectl apply -f pgadmin-service.yaml
-```
-
-
-
-### Ingress Controller (Work in progress)
-
-NOTE: This section is still under development and debugging. Please go to the next section: Port-Forwarding and follow the instructions there.
-
-**Important**: it is not advisable to port-forward ports from pods or services in production. A ingress controller should be used.
-
-Make sure you configure `pg_hba` to allow connections from the Ingress.
+First, let's install the ingress-nginx controller by adding the Helm repository to our local Helm libraries.
 
 ```bash
 # Add Ingress-Nginx to our local Helm repository
 helm repo add ingress-nginx  https://kubernetes.github.io/ingress-nginx 
-
-# List the Helm repos to verify that it was added
-heml repo list
 ```
 
+Check that it was added.
 
+```bash
+# List the Helm repos to verify that it was added
+helm repo list
+```
+
+Remember those Postgres services for RW, RO and R? Well, we are going to need the names for our next command.
+
+```bash
+# Get the services that belong to our cluster in namespace dev
+kubectl get services -n dev -l cnpg.io/cluster=cluster-example                                           
+
+NAME                 TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+cluster-example-r    ClusterIP   10.110.243.89   <none>        5432/TCP   4h28m
+cluster-example-ro   ClusterIP   10.102.152.52   <none>        5432/TCP   4h28m
+cluster-example-rw   ClusterIP   10.106.64.120   <none>        5432/TCP   4h28m
+```
+
+While we are at it let's map the Grafana/Prometheus front end too to the ingress controller. Let map it to port 8083
+
+```bash
+# Get the Grafana service
+kubectl get services -n devops-system -l app.kubernetes.io/name=grafana                                                                                   ─╯
+NAME                           TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+prometheus-community-grafana   ClusterIP   10.103.92.32   <none>        80/TCP    119m
+```
+
+Install the Nginx controller with the `dev/cluster-example-rw` service mapped to port 5432; `dev/cluster-example-ro` mapped to port 5433 and `dev/cluster-example-r` mapped to port 5434
 
 ```bash
 # Install the Nginx Ingress controller
-helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace 
+helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace --set controller.replicaCount=2 --set tcp.5432="dev/cluster-example-rw:5432" --set tcp.5433="dev/cluster-example-ro:5432" --set tcp.5434="dev/cluster-example-r:5432" --set tcp.8083="devops-system/prometheus-community-grafana:80"
 ```
+
+Your output should look something like this:
 
 ```bash
-# create a tcp-services configmap
-kubectl apply -f - <<EOF
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: tcp-services
-  namespace: ingress-nginx
-data:
-  5432: dev/cluster-example-rw:5432
-EOF
+Release "ingress-nginx" does not exist. Installing it now.
+NAME: ingress-nginx
+LAST DEPLOYED: Thu Dec 28 10:37:39 2023
+NAMESPACE: ingress-nginx
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+The ingress-nginx controller has been installed.
+It may take a few minutes for the load balancer IP to be available.
+You can watch the status by running 'kubectl get service --namespace ingress-nginx ingress-nginx-controller --output wide --watch'
+
+An example Ingress that makes use of the controller:
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: example
+    namespace: foo
+  spec:
+    ingressClassName: nginx
+    rules:
+      - host: www.example.com
+        http:
+          paths:
+            - pathType: Prefix
+              backend:
+                service:
+                  name: exampleService
+                  port:
+                    number: 80
+              path: /
+    # This section is only required if TLS is to be enabled for the Ingress
+    tls:
+      - hosts:
+        - www.example.com
+        secretName: example-tls
+
+If TLS is enabled for the Ingress, a Secret containing the certificate and key must also be provided:
+
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: example-tls
+    namespace: foo
+  data:
+    tls.crt: <base64 encoded cert>
+    tls.key: <base64 encoded key>
+  type: kubernetes.io/tls
 ```
 
+So now we should be able to access the Grafana web user interface using `localhost:8083`. Open up the web interface to verify that you can access the Grafana web interface.
 
+The Postgres database is available on port 5432 for the main node in the Postgres cluster; port 5433 for the read only node and port 5434 for the read only node that is used for backups.
 
-```bash
-# cluster expose: add the port to the ingress-nginx service to expose it
-kubectl apply -f - <<EOF
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ingress-nginx
-  namespace: ingress-nginx
-  labels:
-    app.kubernetes.io/name: ingress-nginx
-    app.kubernetes.io/part-of: ingress-nginx
-spec:
-  type: LoadBalancer
-  ports:
-    - name: http
-      port: 80
-      targetPort: 80
-      protocol: TCP
-    - name: https
-      port: 443
-      targetPort: 443
-      protocol: TCP
-    - name: postgres
-      port: 5432
-      targetPort: 5432
-      protocol: TCP
-  selector:
-    app.kubernetes.io/name: ingress-nginx
-    app.kubernetes.io/part-of: ingress-nginx
-EOF
-```
-
-To do: add verification steps that the controller is up and running.
-
-### Port Forwarding
-
-Forward the `cluster-example-rw` service so that you can access it from your pgAdmin application.
-
-```bash
-# Forward the read/write service so it is accessible outside of the K8S cluster
-kubectl port-forward service/cluster-example-rw 5432:5432 -n dev
-```
+In the next section we will connect to our database cluster with pgAdmin.
 
 ### Connect to the database with pgAdmin
 
-Once connected to pgAdmin click on the Add Server quick link.
+Open up your local installation of pgAdmin. Once connected to pgAdmin click on the Add Server quick link.
 
 In the General tab, for Name, put a meaningful name for you. Below we put cluster-example.
 
 ![register-server](./images/register-server.png)
 
-On the Connection tab, for Hostname.address we put localhost. For Username put the super user name, postgres (or you could have put the user name app). For password supply the proper password. Hit save to connect and save the connection.
+On the Connection tab, for Hostname.address we put `localhost`. For Username put the super user name, `postgres` (or you could have put the user name `app`). For password supply the proper password. Hit save to connect and save the connection.
 
 ![connection](./images/connection.png)
 
-After successful connection to the database you should see the navigation tree on the left hand side.
+After successful connection to the database you should see the navigation tree on the left hand side. There will be two databases, the postgres system database and the `app` database that we defined when we created the cluster.
 
 ![sucessful-login](./images/sucessful-login.png)
+
+### Restore a database to the cluster
+
+Using pgAdmin, right click on databases -> Create and create a database called `dvdrental`.
+
+![dvdrental-creation](./images/dvdrental-creation.png)
+
+Right click on the database and select `Restore`
+
+For format choose `Directory` and in the `Filename` select the dvderenatl folder in this repository. Set the number of jobs to one (1) and then click the `Restore` button.
+
+![select-backup](./images/select-backup.png)
+
+A small window will open in the lower left with a button `View Processes`, click on it to see your restore job status. This is a small restore so it will most likely be Finished by the time you see it displayed.
+
+![process-restore](./images/process-restore.png)
+
+You can navigate back to the database tree and drill down on the dvdrental database. Pick a table and select View/Edit Rows -> All Rows to see the data.
+
+![display-restored-data](./images/display-restored-data.png)
+
+Congratulations! You now have a fully fucntional database cluster that is monitored and backed up.
 
 ## Miscellaneous 
 
 ### Getting the master pod
 
-Since CloudNativePG can switch the primary pod, depending upon setup and environmental reasons, such as the primary pod malfuctions, you cannot assume the primary pod when the database was provisioned is still the primary node.
+Since CloudNativePG can switch the primary pod, depending upon setup and environmental reasons, such as the primary pod malfuctions, you cannot assume the primary pod when the database was provisioned is still the primary node. You may need the primary pod for Kubernetes debugging or performance tuning.
 
 To find the primary pod for the database in namespace dev use the following command:
 
 ```bash
-# Get the primary database pod 
+# Get the primary database pod in namespace dev
 kubectl get pods -o jsonpath={.items..metadata.name} -l cnpg.io/cluster=cluster-example,cnpg.io/instanceRole=primary -n dev
+
 cluster-example-1%
 ```
+
+
 
