@@ -1055,7 +1055,7 @@ NAME                           TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S) 
 prometheus-community-grafana   ClusterIP   10.103.92.32   <none>        80/TCP    119m
 ```
 
-Install the Nginx controller with the `dev/cluster-example-rw` service mapped to port 5432; `dev/cluster-example-ro` mapped to port 5433 and `dev/cluster-example-r` mapped to port 5434
+Install the Nginx controller with the `dev/cluster-example-rw` service mapped to port 5432; `dev/cluster-example-ro` mapped to port 5433 and `dev/cluster-example-r` mapped to port 5434. We will also map the Grafana web interface to port 8083 and the Prometheus web interface to port 9090.
 
 ```bash
 # Install the Nginx Ingress controller
@@ -1067,7 +1067,8 @@ helm upgrade --install ingress-nginx ingress-nginx \
  --set tcp.5432="dev/cluster-example-rw:5432" \
  --set tcp.5433="dev/cluster-example-ro:5432" \
  --set tcp.5434="dev/cluster-example-r:5432" \
- --set tcp.8083="devops-system/prometheus-community-grafana:80"
+ --set tcp.8083="devops-system/prometheus-community-grafana:80" \
+ --set tcp.9090="devops-system/prometheus-community-kube-prometheus:9090"
 ```
 
 Your output should look something like this:
