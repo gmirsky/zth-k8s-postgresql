@@ -2,13 +2,53 @@
 
 Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from begining to end. This is a fully detailed step-by-step process tutorial with minimal skills assumed. 
 
-Revision Date: `28-December-2023`
+You will build a clustered Postgres database with automated and scheduled backups to cloud storage, monitoring with Prometheus and a Grafana dashboard. You will also build a ingress controller so that your database, Prometheus and Grafan are available outside of your Kubernetes cluster. 
+
+This tutorial uses Kubectl, Krew, Azure CLI or AWS CLI, Helm, Base64 and pgAdmin. Not familiar with all of these? Don't worry. There are detailed step by step instructions for you to follow along with so you can learn by doing.
+
+**Revision Date:** `29-December-2023`
 
 ------
 
 ## Assumptions
 
 This tutorial is being deployed on a single node local Kubernetes cluster using Docker Desktop Kubernetes. If you wish to use another Kubernetes micro environment like  Minikube, Kind, etc. you may need to make some adjustments to the code.
+
+Use the command `docker version` to check the version of Docker you have installed. If you don't have Docker installed, don't worry there are links below to get you started on the installation process.
+
+```bash
+# Get the docker version
+docker version 
+
+Client:
+ Cloud integration: v1.0.35+desktop.5
+ Version:           24.0.7
+ API version:       1.43
+ Go version:        go1.20.10
+ Git commit:        afdd53b
+ Built:             Thu Oct 26 09:04:20 2023
+ OS/Arch:           darwin/arm64
+ Context:           desktop-linux
+
+Server: Docker Desktop 4.26.1 (131620)
+ Engine:
+  Version:          24.0.7
+  API version:      1.43 (minimum version 1.12)
+  Go version:       go1.20.10
+  Git commit:       311b9ff
+  Built:            Thu Oct 26 09:08:15 2023
+  OS/Arch:          linux/arm64
+  Experimental:     false
+ containerd:
+  Version:          1.6.25
+  GitCommit:        d8f198a4ed8892c764191ef7b3b06d8a2eeb5c7f
+ runc:
+  Version:          1.1.10
+  GitCommit:        v1.1.10-0-g18a0cb0
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+```
 
 The commands below were tested in a Zsh/Bash command line environment. Some of the commands like base64 will be executed differntly in Windows and you will need to adjust accordingly.
 
@@ -602,7 +642,11 @@ kubectl get secret aws-credentials -o 'jsonpath={.data.ACCESS_SECRET_KEY}' -n de
 
 ## Deploy a PostgreSQL Cluster
 
-Before deploying, check that cluster-example.yaml has the proper configuration for your environment. 
+Before deploying, check that `cluster-example.yaml` has the proper configuration for your environment. 
+
+If you are using AWS to back up you wiil need to comment out the Azure section of the backup stanza and uncomment the AWS section and supply the correct S3 bucket name and path in `destinationPath`
+
+If using Azure, you will  need to change the name of the Azure storage account in `destinationPath` to the one you deployed in your Azure account.
 
 ### Backup to Azure
 
@@ -990,22 +1034,22 @@ az storage blob list --account-name clusterexamplesa --container-name cloudnativ
   "cluster-example/base/20231228T140500/data.tar",
   "cluster-example/base/20231228T160500/backup.info",
   "cluster-example/base/20231228T160500/data.tar",
-  "cluster-example/wals/0000000100000000/000000010000000000000001",
-  "cluster-example/wals/0000000100000000/000000010000000000000002",
-  "cluster-example/wals/0000000100000000/000000010000000000000003",
-  "cluster-example/wals/0000000100000000/000000010000000000000003.00000028.backup",
-  "cluster-example/wals/0000000100000000/000000010000000000000004",
-  "cluster-example/wals/0000000100000000/000000010000000000000005",
-  "cluster-example/wals/0000000100000000/000000010000000000000005.00000028.backup",
-  "cluster-example/wals/0000000100000000/000000010000000000000006",
-  "cluster-example/wals/0000000100000000/000000010000000000000007",
-  "cluster-example/wals/0000000100000000/000000010000000000000008",
-  "cluster-example/wals/0000000100000000/000000010000000000000009",
-  "cluster-example/wals/0000000100000000/00000001000000000000000A",
-  "cluster-example/wals/0000000100000000/00000001000000000000000B",
-  "cluster-example/wals/0000000100000000/00000001000000000000000C",
-  "cluster-example/wals/0000000100000000/00000001000000000000000D",
-  "cluster-example/wals/0000000100000000/00000001000000000000000E"
+  "cluster-example/wals/0000000100000000/000000010000000000000001.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000002.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000003.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000003.00000028.backup.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000004.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000005.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000005.00000028.backup.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000006.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000007.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000008.snappy",
+  "cluster-example/wals/0000000100000000/000000010000000000000009.snappy",
+  "cluster-example/wals/0000000100000000/00000001000000000000000A.snappy",
+  "cluster-example/wals/0000000100000000/00000001000000000000000B.snappy",
+  "cluster-example/wals/0000000100000000/00000001000000000000000C.snappy",
+  "cluster-example/wals/0000000100000000/00000001000000000000000D.snappy",
+  "cluster-example/wals/0000000100000000/00000001000000000000000E.snappy"
 ```
 
 ### Display data backed in AWS

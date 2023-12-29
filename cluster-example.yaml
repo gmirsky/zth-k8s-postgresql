@@ -46,6 +46,9 @@ spec:
         name: cluster-example-app-user
   backup:
     barmanObjectStore:
+      #################################################################
+      # For Azure use this block                                      #
+      #################################################################
       destinationPath: "https://clusterexamplesa.blob.core.windows.net/cloudnativebackup"
       azureCredentials:
         # connectionString:
@@ -60,4 +63,17 @@ spec:
         # storageSasToken:
         #   name: azure-creds
         #   key: AZURE_STORAGE_SAS_TOKEN
+      wal:
+        compression: snappy
+      #################################################################
+      # For AWS use this block                                        #
+      #################################################################
+      # destinationPath: "s3://backup-bucket/backup-path"
+      # s3Credentials:
+      #   accessKeyId:
+      #     name: aws-creds
+      #     key: ACCESS_KEY_ID
+      #   secretAccessKey:
+      #     name: aws-creds
+      #     key: ACCESS_SECRET_KEY
     retentionPolicy: "30d"
