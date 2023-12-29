@@ -56,7 +56,7 @@ The commands below were tested in a Zsh/Bash command line environment. Some of t
 
 ### A cloud storage account
 
-A Azure or AWS account to store the cluster autoamted and on-demand backups into. Please refer to the sections below to provision the proper infrastucture such as an AWS S3 bucket or a Azure storage account.
+A Azure or AWS account to store the cluster automated and on-demand backups into. Please refer to the sections below to provision the proper infrastucture such as an AWS S3 bucket or a Azure storage account.
 
 For this tutorial we will use a Azure Storage Account Container but we will provide instructions to use a AWS S3 bucket too.
 
