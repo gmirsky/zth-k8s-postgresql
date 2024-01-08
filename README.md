@@ -1,12 +1,12 @@
 # Zero to Hero: A Kubernetes PostgreSQL cluster
 
-Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from begining to end. This is a fully detailed step-by-step process tutorial with minimal skills assumed. 
+Zero to Hero: A Kubernetes PostgreSQL cluster tutorial from beginning to end. This is a fully detailed step-by-step process tutorial with minimal skills assumed. 
 
-You will build a clustered Postgres database with automated and scheduled backups to cloud storage, monitoring with Prometheus and a Grafana dashboard. You will also build a ingress controller so that your database, Prometheus and Grafan are available outside of your Kubernetes cluster. 
+You will build a clustered Postgres database with automated and scheduled backups to cloud storage, monitoring with Prometheus and a Grafana dashboard. You will also build an ingress controller so that your database, Prometheus and Grafana are available outside of your Kubernetes cluster. 
 
 This tutorial uses Kubectl, Krew, Azure CLI or AWS CLI, Helm, Base64 and pgAdmin. Not familiar with all of these? Don't worry. There are detailed step by step instructions for you to follow along with so you can learn by doing.
 
-**Revision Date:** `29-December-2023`
+**Revision Date:** `08-January-2024`
 
 ------
 
@@ -50,15 +50,15 @@ Server: Docker Desktop 4.26.1 (131620)
   GitCommit:        de40ad0
 ```
 
-The commands below were tested in a Zsh/Bash command line environment. Some of the commands like base64 will be executed differntly in Windows and you will need to adjust accordingly.
+The commands below were tested in a Zsh/Bash command line environment. Some of the commands like base64 will be executed differently in Windows and you will need to adjust accordingly.
 
 ## Prerequisites
 
 ### A cloud storage account
 
-A Azure or AWS account to store the cluster automated and on-demand backups into. Please refer to the sections below to provision the proper infrastucture such as an AWS S3 bucket or a Azure storage account.
+A Azure or AWS account to store the cluster automated and on-demand backups into. Please refer to the sections below to provision the proper infrastructure such as an AWS S3 bucket or an Azure storage account.
 
-For this tutorial we will use a Azure Storage Account Container but we will provide instructions to use a AWS S3 bucket too.
+For this tutorial we will use an Azure Storage Account Container but we will provide instructions to use a AWS S3 bucket too.
 
 #### Azure Blob Storage
 
@@ -120,7 +120,7 @@ Create the Azure Storage Account. (Note: You cannot use dashes in the storage ac
 az storage account create -n clusterexamplesa -g cluster-example-rg -l eastus
 ```
 
-Verify in the volumous JSON output that `"provisioningState": "Succeeded"`, is present to determine if your storage account was created.
+Verify in the voluminous JSON output that `"provisioningState": "Succeeded"`, is present to determine if your storage account was created.
 
 Create a container in the storage account we just created.
 
@@ -181,7 +181,7 @@ Now we have to get theAzure key for the Storage Account so that our cluster can 
 az storage account keys list --account-name clusterexamplesa --resource-group cluster-example-rg
 ```
 
-You should get a access key back in the following form. (The keys below have been redacted.) Make a note of this key. You will need it later.
+You should get an access key back in the following form. (The keys below have been redacted.) Make a note of this key. You will need it later.
 
 ```
 [
@@ -241,7 +241,7 @@ Please install the below packages to your environment.
 
 ### Kubectl
 
-Kubectl should have been installed with Docker Desktop when the Kuberneteses option is enabled. If not [see installing Kubectl](https://kubernetes.io/docs/tasks/tools/)
+Kubectl should have been installed with Docker Desktop when the Kubernetes option is enabled. If not [see installing Kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ```bash
 # get the current version of our kubectl client and the version of our kubernetes cluster
@@ -413,7 +413,7 @@ kube-system       Active   45h   kubernetes.io/metadata.name=kube-system
 
 ## Generate and install the CloudNativePG Operator
 
-Generate the operator yaml manifest. The `-n` flag defines the namespace where the operator is deployed to and the replicas flag tells us how many replicas of the operator should be installed (note: number of operator replicas - not postgres instances). For our demonstration we will pick one node but in production we would likely have 3, one for each cloud availability zone in the region.
+Generate the operator yaml manifest. The `-n` flag defines the namespace where the operator is deployed to and the replicas flag tells us how many replicas of the operator should be installed (note: number of operator replicas - not Postgres instances). For our demonstration we will pick one node but in production we would likely have 3, one for each cloud availability zone in the region.
 
 ```bash
 # Generate the YAML manifest with 1 node to deploy
@@ -464,11 +464,11 @@ First, let's start with provisioning secrets to our Kubernetes cluster that the 
 
 Passwords are base64 encoded.
 
-To encode a password use the [Base64 Encode website](https://www.base64encode.org) so you do not have to worry about character sets and other frustrating nuances of Base64 encodeing. Just make sure that your destination character set is UTF-8 and the destination new line seperator is set to LF(Unix).
+To encode a password use the [Base64 Encode website](https://www.base64encode.org) so you do not have to worry about character sets and other frustrating nuances of Base64 encoding. Just make sure that your destination character set is UTF-8 and the destination new line separator is set to LF(Unix).
 
 ### Example cluster application user secret
 
-For our example cluster, we will create a `app` user using the `cluster-example-app-user.yaml` file.  Our sample password is `postgres` and our sample user name is `app`. 
+For our example cluster, we will create an `app` user using the `cluster-example-app-user.yaml` file.  Our sample password is `Postgres` and our sample user name is `app`. 
 
 ```yaml
 data:
@@ -504,7 +504,7 @@ cluster-example-app-user   kubernetes.io/basic-auth   2      18s
 
 ### Example cluster super user secret
 
-Create a super user for the PostgreSQL cluster to executer elevated privileged functions. Here, our user must be postgres and the password, again, is postgres for our example.
+Create a super user for the PostgreSQL cluster to executer elevated privileged functions. Here, our user must be Postgres and the password, again, is Postgres for our example.
 
 ```yaml
 apiVersion: v1
@@ -644,7 +644,7 @@ kubectl get secret aws-credentials -o 'jsonpath={.data.ACCESS_SECRET_KEY}' -n de
 
 Before deploying, check that `cluster-example.yaml` has the proper configuration for your environment. 
 
-If you are using AWS to back up you wiil need to comment out the Azure section of the backup stanza and uncomment the AWS section and supply the correct S3 bucket name and path in `destinationPath`
+If you are using AWS to back up you will need to comment out the Azure section of the backup stanza and uncomment the AWS section and supply the correct S3 bucket name and path in `destinationPath`
 
 If using Azure, you will  need to change the name of the Azure storage account in `destinationPath` to the one you deployed in your Azure account.
 
@@ -698,7 +698,7 @@ The backup section needs to be changed to the following:
 
 Now that all the secrets are in place we will now deploy a PostgreSQL clusters in the `dev` namespace.
 
-The cluster will have a master and two replicas. One replica is for read-only transactions and the other replica is used by the continuous backup facilites.
+The cluster will have a master and two replicas. One replica is for read-only transactions and the other replica is used by the continuous backup facilities.
 
 ### Deploy cluster for namespace dev
 
@@ -853,7 +853,7 @@ kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg
 
 ### Install Grafana dashboard
 
-Graphana is installed with Prometheus. Below we will install a monitoring dashboard that provides comprehensive details on our clusters.
+Grafana is installed with Prometheus. Below we will install a monitoring dashboard that provides comprehensive details on our clusters.
 
 ```bash
 # Install Graphana so we can use dashboards to report Prometheus data
@@ -875,7 +875,7 @@ Open the CloudNativePG dashboard. It may take a few minutes for the data to popu
 
 Scroll down and investigate the hundreds of parameters Prometheus captures about the PostgreSQL databases.
 
-Prometheus will automatically pick up monitorng data from any database in the Kubernetes cluster that has the following stanza in its deployment YAML.
+Prometheus will automatically pick up monitoring data from any database in the Kubernetes cluster that has the following stanza in its deployment YAML.
 
 ```YAML
   monitoring:
@@ -971,7 +971,7 @@ Events:
 
 ### Create a scheduled backup of the database cluster
 
-We will use the `cluster-example-scheduled-backup.yaml`file  to create a scheduled backup job. This will create a backup every two hours at five minutes past the hour.
+We will use the `cluster-example-scheduled-backup.yam` file  to create a scheduled backup job. This will create a backup every two hours at five minutes past the hour.
 
 ```yaml
 apiVersion: postgresql.cnpg.io/v1
@@ -1184,11 +1184,11 @@ In the General tab, for Name, put a meaningful name for you. Below we put cluste
 
 ![register-server](./images/register-server.png)
 
-On the Connection tab, for Hostname.address we put `localhost`. For Username put the super user name, `postgres` (or you could have put the user name `app`). For password supply the proper password. Hit save to connect and save the connection.
+On the Connection tab, for Hostname.address we put `localhost`. For Username put the super user name, `Postgres` (or you could have put the user name `app`). For password supply the proper password. Hit save to connect and save the connection.
 
 ![connection](./images/connection.png)
 
-After successful connection to the database you should see the navigation tree on the left hand side. There will be two databases, the postgres system database and the `app` database that we defined when we created the cluster.
+After successful connection to the database you should see the navigation tree on the left hand side. There will be two databases, the Postgres system database and the `app` database that we defined when we created the cluster.
 
 ![sucessful-login](./images/sucessful-login.png)
 
@@ -1200,7 +1200,7 @@ Using pgAdmin, right click on databases -> Create and create a database called `
 
 Right click on the database and select `Restore`
 
-For format choose `Directory` and in the `Filename` select the dvderenatl folder in this repository. Set the number of jobs to one (1) and then click the `Restore` button.
+For format choose `Directory` and in the `Filename` select the dvdrental folder in this repository. Set the number of jobs to one (1) and then click the `Restore` button.
 
 ![select-backup](./images/select-backup.png)
 
@@ -1212,13 +1212,13 @@ You can navigate back to the database tree and drill down on the dvdrental datab
 
 ![display-restored-data](./images/display-restored-data.png)
 
-Congratulations! You now have a fully fucntional database cluster that is monitored and backed up.
+Congratulations! You now have a fully functional database cluster that is monitored and backed up.
 
 ## Miscellaneous 
 
 ### Getting the master pod
 
-Since CloudNativePG can switch the primary pod, depending upon setup and environmental reasons, such as the primary pod malfuctions, you cannot assume the primary pod when the database was provisioned is still the primary node. You may need the primary pod for Kubernetes debugging or performance tuning.
+Since CloudNativePG can switch the primary pod, depending upon setup and environmental reasons, such as the primary pod malfunctions, you cannot assume the primary pod when the database was provisioned is still the primary node. You may need the primary pod for Kubernetes debugging or performance tuning.
 
 To find the primary pod for the database in namespace dev use the following command:
 
