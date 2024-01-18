@@ -126,7 +126,7 @@ Create a container in the storage account we just created.
 
 ```bash
 # create the Azure Storage Account Container
-az storage container create -n clusterexample --account-name clusterexamplesa
+az storage container create -n clusterexample --account-name clusterexamplesa --auth-mode login
 ```
 
 If everything goes correctly we should get the following JSON.
@@ -247,7 +247,7 @@ Kubectl should have been installed with Docker Desktop when the Kubernetes optio
 # get the current version of our kubectl client and the version of our kubernetes cluster
 kubectl version                                                                                           
 
-Client Version: v1.29.0
+Client Version: v1.29.1
 Kustomize Version: v5.0.4-0.20230601165947-6ce0bf390ce3
 Server Version: v1.28.2
 ```
@@ -279,7 +279,7 @@ DetectedPlatform  darwin/arm64
 # verify the Helm version installed
 helm version                                                                                             
 
-version.BuildInfo{Version:"v3.13.3", GitCommit:"c8b948945e52abba22ff885446a1486cb5fd3474", GitTreeState:"clean", GoVersion:"go1.21.5"}
+version.BuildInfo{Version:"v3.14.0", GitCommit:"3fc9f4b2638e76f26739cd77c7017139be81d0ea", GitTreeState:"clean", GoVersion:"go1.21.6"}
 ```
 
 ### pgAdmin 
@@ -570,6 +570,9 @@ cluster-example-superuser   kubernetes.io/basic-auth   2      91m
 Now let's add a label to the secret to denote what tenant it belongs to. (Note: Use your Azure tenant ID)
 
 ```bash
+# get the Azure tenant id
+az  account show  --query "tenantId"
+
 # Label the secret
 kubectl label secret azure-creds -n dev "azure-tenant=00000000-0000-0000-0000-000000000000"    
 ```
