@@ -1,0 +1,47 @@
+---
+name: "PyWay Info Workflow Demonstrator"
+# Controls when the action will run. Triggers the workflow on push request
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+# Environment variables are used to pass secrets to the workflow
+env:
+  database_type: postgres
+  database_username: postgres
+  database_password: ${{ secrets.DATABASE_PASSWORD }}
+  database_host: localhost
+  database_port: 6432
+  database_name: app
+  database_migration_dir: sql
+  database_table: app.pyway_history
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+    # This workflow contains a single job called "pyway_info"
+    pyway_info:
+        # The type of runner that the job will run on
+        runs-on: arc-runner-set
+        # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+            - name: Checkout repository
+              uses: actions/checkout@v4
+            # Set up Python 3.11
+            - name: Set up Python 3.11
+              uses: actions/setup-python@v4
+              with:
+                python-version: 3.11
+            - name: Run PyWay Info
+              run: |
+                echo "Running PyWay Info Workflow Demonstrator"
+                echo "Repository: ${{ github.repository }}"
+                echo "GitHub Event Name: ${{ github.event_name }}"
+                echo "GitHub Event Path: ${{ github.event_path }}"
+                echo "GitHub Workspace: ${{ github.workspace }}"
+                python --version
+                echo "Upgrading pip"
+                python -m pip install --upgrade pip
+                echo "Installing PyWay"
+                pip install pyway
+                echo "Running PyWay Info"
+                pyway info --database-type ${{ env.database_type }} --database-username ${{ env.database_username }} --database-password ${{ env.database_password }} --database-host ${{ env.database_host }} --database-port ${{ env.database_port }} --database-name ${{ env.database_name }} --database-migration-dir ${{ env.database_migration_dir }} --database-table ${{ env.database_table }}
+                echo "PyWay Info Workflow Demonstrator finished"
