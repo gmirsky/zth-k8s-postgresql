@@ -7,7 +7,7 @@ on:
 # Environment variables are used to pass secrets to the workflow
 env:
     # URL is the JDBC URL to the database
-    URL: 'jdbc:postgresql://localhost:5432/app'
+    URL: 'jdbc:postgresql://localhost:6432/app'
     # USERNAME is the username to use to connect to the database
     USERNAME: postgres
     # USER_PASSWORD is the password to use to connect to the database
@@ -27,4 +27,4 @@ jobs:
             # Run the Flyway container to perform the migration
             - name: Flyway Migrate
               run: |
-                  docker run --rm --tty --volume "${{ env.SQL_DIR}}:/flyway/sql" flyway/flayway:latest-alpine -url=${{ env.URL }} -user=${{ env.USERNAME }} -password=${{ env.USER_PASSWORD }} -schemas=${{ env.SCHEMAS }} -createSchemas=true info
+                  sudo docker run --rm --tty --volume "${{ env.SQL_DIR}}:/flyway/sql" flyway/flayway:latest-alpine -url=${{ env.URL }} -user=${{ env.USERNAME }} -password=${{ env.USER_PASSWORD }} -schemas=${{ env.SCHEMAS }} -createSchemas=true info
