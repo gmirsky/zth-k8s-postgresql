@@ -25,6 +25,6 @@ jobs:
         # Steps represent a sequence of tasks that will be executed as part of the job
         steps:
             # Run the Flyway container to perform the migration
-            - name: Flyway Migrate
+            - name: Flyway Info
               run: |
                   sudo docker run --rm --tty --volume "${{ env.SQL_DIR}}:/flyway/sql" flyway/flayway:latest-alpine -url=${{ env.URL }} -user=${{ env.USERNAME }} -password=${{ env.USER_PASSWORD }} -schemas=${{ env.SCHEMAS }} -createSchemas=true info
