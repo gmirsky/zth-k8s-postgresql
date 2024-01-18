@@ -1,0 +1,30 @@
+---
+name: "Flyway Migration Workflow Demonstrator"
+# Controls when the action will run. Triggers the workflow on push request
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+# Environment variables are used to pass secrets to the workflow
+env:
+    # URL is the JDBC URL to the database
+    URL: 'jdbc:postgresql://localhost:5432/app'
+    # USERNAME is the username to use to connect to the database
+    USERNAME: postgres
+    # USER_PASSWORD is the password to use to connect to the database
+    USER_PASSWORD: ${{ secrets.USER_PASSWORD }}
+    # SQL_DIR is the directory containing the SQL files to run
+    SQL_DIR: 'sql/'
+    # SCHEMA is the database schema or comma separated schemas to use for the migration
+    SCHEMAS: 'app'
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+    # This workflow contains a single job called "flyway-migrate"
+    migrate:
+        # The type of runner that the job will run on
+        runs-on: arc-runner-set
+        # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Run the Flyway container to perform the migration
+            - name: Flyway Migrate
+              run: |
+                  docker run --rm --tty --volume "${{ env.SQL_DIR}}:/flyway/sql" flyway/flayway:latest-alpine -url=${{ env.URL }} -user=${{ env.USERNAME }} -password=${{ env.USER_PASSWORD }} -schemas=${{ env.SCHEMAS }} -createSchemas=true info
