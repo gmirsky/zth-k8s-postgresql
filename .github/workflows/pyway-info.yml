@@ -36,7 +36,7 @@ jobs:
             # actions/setup-python doesn't yet support ARM so we are using deadsnakes/action@v3.1.0
             - if: ${{ matrix.os == 'ubuntu-latest' }}
               name: Set up Python 3.9 ubuntu-latest
-              uses: deadsnakes/action@v3.1.0
+              uses: actions/setup-python@v2
               with:
                 python-version: "3.9"
             - if: ${{ matrix.os == 'windows-latest' }}
