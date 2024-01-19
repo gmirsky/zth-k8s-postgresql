@@ -32,8 +32,14 @@
                     echo "Matrix.OS: ${{ matrix.os }}"
                 # Set up docker so we can run a container
                 - name: Set up Docker
-                  uses: crazy-max/ghaction-setup-docker@v3
+                #   uses: crazy-max/ghaction-setup-docker@v3
+                  uses: docker-practice/actions-setup-docker@master
+                  timeout-minutes: 12
                 # Run the container
                 - name: Run docker container
                   run: |
-                    docker run --tty --rm hello-world:latest
+                    set -x
+            
+                    docker version
+            
+                    docker run --rm hello-world
