@@ -18,6 +18,10 @@ env:
 jobs:
     # This workflow contains a single job called "pyway_info"
     pyway_info:
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, ubuntu-arm, macos-latest, windows-latest]
         # The type of runner that the job will run on
         runs-on: arc-runner-set
         # Steps represent a sequence of tasks that will be executed as part of the job
@@ -25,11 +29,21 @@ jobs:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
             - name: Checkout repository
               uses: actions/checkout@v4
-            # Set up Python 3.10
-            - name: Set up Python 3.10
-              uses: actions/setup-python@v5
-              #with:
-              #  python-version: '3.10'
+            - name: Veify Matrix.OS
+              run: |
+                echo "Matrix.OS: ${{ matrix.os }}"
+            # Set up Python 3.11
+            # actions/setup-python doesn't yet support ARM
+            - if: ${{ !endsWith(matrix.os, '-arm') }}
+              name: Set up Python 3.11 AMD64
+              uses: actions/setup-python@v4
+              with:
+                python-version: "3.11"
+            - if: ${{ matrix.os == 'ubuntu-arm' }}
+              name: Set up Python 3.11 ARM64
+              uses: deadsnakes/action@v3.1.0
+              with:
+                python-version: "3.11"
             - name: Run PyWay Info
               run: |
                 echo "Running PyWay Info Workflow Demonstrator"
