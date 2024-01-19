@@ -1,0 +1,39 @@
+---
+    name: "FlyWay Info Workflow Demonstrator"
+    # Controls when the action will run. Triggers the workflow on push request
+    on:
+      # Allows you to run this workflow manually from the Actions tab
+      workflow_dispatch:
+    # Environment variables are used to pass secrets to the workflow
+    env:
+      URL: 'jdbc:postgresql://localhost:6432/app'
+      SQL_DIR: './sql'
+      USER: postgres
+      USER_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      SCHEMA: test
+    # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+    jobs:
+        # This workflow contains a single job called "flway-info"
+        flyway-info:
+            strategy:
+                fail-fast: false
+                matrix:
+                    os: [ubuntu-latest, ubuntu-arm, macos-latest, windows-latest]
+            # The type of runner that the job will run on
+            runs-on: arc-runner-set
+            # Steps represent a sequence of tasks that will be executed as part of the job
+            steps:
+                # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+                - name: Checkout repository
+                  uses: actions/checkout@v4
+                # Verify the OS that this workflow is running on
+                - name: Verify Matrix.OS
+                  run: |
+                    echo "Matrix.OS: ${{ matrix.os }}"
+                # Set up docker so we can run a container
+                - name: Set up Docker
+                  uses: crazy-max/ghaction-setup-docker@v3
+                # Run the container
+                - name: Run docker container
+                  run: |
+                    docker run --tty --rm hello-world:latest
