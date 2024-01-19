@@ -10,7 +10,7 @@ env:
   database_username: postgres
   database_password: ${{ secrets.DATABASE_PASSWORD }}
   database_host: localhost
-  database_port: 6432
+  database_port: 5432
   database_name: app
   database_migration_dir: './sql'
   database_table: app.pyway_history
