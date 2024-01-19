@@ -30,6 +30,11 @@
                 - name: Verify Matrix.OS
                   run: |
                     echo "Matrix.OS: ${{ matrix.os }}"
+                # Get required packages
+                - name: Get required packages
+                  uses: mstksg/get-package@v1
+                  with:
+                      apt-get: curl gpg
                 # Set up docker so we can run a container
                 - name: Set up Docker
                 #   uses: crazy-max/ghaction-setup-docker@v3
