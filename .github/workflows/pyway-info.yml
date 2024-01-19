@@ -33,24 +33,24 @@ jobs:
               run: |
                 echo "Matrix.OS: ${{ matrix.os }}"
             # Set up Python 3.11
-            # actions/setup-python doesn't yet support ARM
+            # actions/setup-python doesn't yet support ARM so we are using deadsnakes/action@v3.1.0
             - if: ${{ matrix.os == 'ubuntu-latest' }}
-              name: Set up Python 3.11 AMD64
-              uses: actions/setup-python@v4
+              name: Set up Python 3.11 ubuntu-latest
+              uses: deadsnakes/action@v3.1.0
               with:
                 python-version: "3.11"
             - if: ${{ matrix.os == 'windows-latest' }}
-              name: Set up Python 3.11 AMD64
-              uses: actions/setup-python@v4
+              name: Set up Python 3.11 windows-latest
+              uses: deadsnakes/action@v3.1.0
               with:
                 python-version: "3.11"
             - if: ${{ matrix.os == 'ubuntu-arm' }}
-              name: Set up Python 3.11 ARM64
+              name: Set up Python 3.11 ubuntu-arm
               uses: deadsnakes/action@v3.1.0
               with:
                 python-version: "3.11"
             - if: ${{ matrix.os == 'macos-latest' }}
-              name: Set up Python 3.11 MacOS
+              name: Set up Python 3.11 macos-latest
               uses: deadsnakes/action@v3.1.0
               with:
                 python-version: "3.11"
