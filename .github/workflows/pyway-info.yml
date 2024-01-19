@@ -34,7 +34,12 @@ jobs:
                 echo "Matrix.OS: ${{ matrix.os }}"
             # Set up Python 3.11
             # actions/setup-python doesn't yet support ARM
-            - if: ${{ !endsWith(matrix.os, '-arm') }}
+            - if: ${{ matrix.os == 'ubuntu-latest' }}
+              name: Set up Python 3.11 AMD64
+              uses: actions/setup-python@v4
+              with:
+                python-version: "3.11"
+            - if: ${{ matrix.os == 'windows-latest' }}
               name: Set up Python 3.11 AMD64
               uses: actions/setup-python@v4
               with:
