@@ -1,4 +1,11 @@
--- FILEPATH: ./sql/V1__create_iso_country_codes.sql
+-- FILEPATH: ./sql/V01_01__initial_schema.sql
+--
+-- File name must follow this format: 
+--    V{major}_{minor}_({patch})__{description}.sql
+--    or
+--    Example: V01_01_01__initial_schema.sql
+--
+-- Note: the description needs to match the word regexp [A-Za-z0-9_]
 
 -- Create the sequence
 CREATE SEQUENCE country_sequence;
