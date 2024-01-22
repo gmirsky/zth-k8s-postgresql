@@ -13,7 +13,7 @@ env:
   database_port: 5432
   database_name: app
   database_migration_dir: './sql'
-  database_table: app.pyway_history
+  database_table: public.pyway_history
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
     # This workflow contains a single job called "pyway_info"
@@ -21,7 +21,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                os: [ubuntu-latest, ubuntu-arm, macos-latest, windows-latest]
+                os: [ubuntu-latest]
         # The type of runner that the job will run on
         runs-on: arc-runner-set
         # Steps represent a sequence of tasks that will be executed as part of the job
@@ -52,5 +52,11 @@ jobs:
                 echo "Installing PyWay"
                 pip install pyway
                 echo "Running PyWay Info"
+                echo "Environment variable database_type: ${{ env.database_type }}"
+                echo "Environment variable database_username: ${{ env.database_username }}"
+                echo "Environment variable database_host: ${{ env.database_host }}"
+                echo "Environment variable database_port: ${{ env.database_port }}"
+                echo "Environment variable database_name: ${{ env.database_name }}"
+                echo "Environment variable database_migration_dir: ${{ env.database_migration_dir }}"
                 pyway info --database-type ${{ env.database_type }} --database-username ${{ env.database_username }} --database-password ${{ env.database_password }} --database-host ${{ env.database_host }} --database-port ${{ env.database_port }} --database-name ${{ env.database_name }} --database-migration-dir ${{ env.database_migration_dir }} --database-table ${{ env.database_table }}
-                echo "PyWay Info Workflow Demonstrator finished"
+                echo "PyWay Info Workflow Demonstrator finished."
