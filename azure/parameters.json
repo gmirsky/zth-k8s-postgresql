@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "resourceName": {
+      "value": "az-k8s-poc"
+    },
+    "managedNodeResourceGroup": {
+      "value": "az-k8s-poc-mrg"
+    },
+    "agentCount": {
+      "value": 1
+    },
+    "upgradeChannel": {
+      "value": "stable"
+    },
+    "JustUseSystemPool": {
+      "value": true
+    },
+    "osDiskType": {
+      "value": "Managed"
+    },
+    "osDiskSizeGB": {
+      "value": 32
+    },
+    "authorizedIPRanges": {
+      "value": [
+        "108.29.92.98/32"
+      ]
+    },
+    "ingressApplicationGateway": {
+      "value": true
+    }
+  }
+}
