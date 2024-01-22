@@ -6,7 +6,7 @@ You will build a clustered Postgres database with automated and scheduled backup
 
 This tutorial uses Kubectl, Krew, Azure CLI or AWS CLI, Helm, Base64 and pgAdmin. Not familiar with all of these? Don't worry. There are detailed step by step instructions for you to follow along with so you can learn by doing.
 
-**Revision Date:** `08-January-2024`
+**Revision Date:** `22-January-2024`
 
 ------
 
@@ -1232,5 +1232,142 @@ kubectl get pods -o jsonpath={.items..metadata.name} -l cnpg.io/cluster=cluster-
 cluster-example-1%
 ```
 
+## Adding Self Hosted GitHub Runners
 
+**Prerequisite**: Create a Personal Access Token (Classic) for your repository, See the GitHub [documentation](https://docs.github.com/en/enterprise-server@3.9/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for more information. Also, create a repository secret called `DATABASE_PASSWORD` to house your database password.
+
+You can add the self hosted GitHub Actions Runner Controller (ARC) to your Kubernetes cluster to enable CI/CD actions using PyWay.
+
+```bash
+# Install the Helm chart for the GitHub Actions Runner Scale Set Controller
+helm install arc --namespace "arc-systems" --create-namespace  \
+ oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+
+# Set the variable for the installation name for the GitHub runners
+INSTALLATION_NAME="arc-runner-set"
+
+# Set the variable for the namespace name
+NAMESPACE="arc-runners"
+
+# Set the variable for the name of the GitHub repository that will trigger off 
+# the self hosted workflow action runners
+GITHUB_CONFIG_URL="https://github.com/myaccount/my-fantastic-repository"
+
+# Set the variable for the GitHub personal access token
+GITHUB_PAT="****************************************"
+
+# Install the Helm chart for GitHub Actions Runner Scale set
+helm install "${INSTALLATION_NAME}" \
+    --namespace "${NAMESPACE}" \
+    --create-namespace \
+    --set githubConfigUrl="${GITHUB_CONFIG_URL}" \
+    --set githubConfigSecret.github_token="${GITHUB_PAT}" \
+    --set containerMode.type="dind" \
+    oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+```
+
+You can use this demonstration-workflow.yml to test the commuincation between your repoistory and your locally hosted runners. This workflow does nothing but print out some messages in the workflow.
+
+```yaml
+---
+# This is a Actions Runner Controller Demonstrator
+name: Actions Runner Controller Demonstrator
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the "main" branch
+#  push:
+#    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: arc-runner-set
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+
+      # Runs a single command using the runners shell
+      - name: Run a one-line script
+        run: echo "🎉 This job uses runner scale set runners!"
+```
+
+To test the PyWay connectivity to your database in the cluster you can use the follow `pyway-info.yml` workflow. Remember to change the variables to match your deployment. Remember to adjust the values for the database host and database port to match your deployment.
+
+```yaml
+---
+  name: "PyWay Info Workflow Demonstrator"
+  # Controls when the action will run.
+  on:
+    # Allows you to run this workflow manually from the Actions tab
+    workflow_dispatch:
+  # Environment variables are used to pass secrets to the workflow
+  env:
+    database_type: postgres
+    database_username: postgres
+    database_password: ${{ secrets.DATABASE_PASSWORD }}
+    database_host: 4.255.89.123
+    database_port: 5432
+    database_name: app
+    database_table: public.pyway_history
+  # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+  jobs:
+      # This workflow contains a single job called "pyway_info"
+      pyway_info:
+          strategy:
+              fail-fast: false
+              matrix:
+                  os: [ubuntu-latest]
+          # The type of runner that the job will run on
+          runs-on: arc-runner-set
+          # Steps represent a sequence of tasks that will be executed as part of the job
+          steps:
+              # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+              - name: Checkout repository
+                uses: actions/checkout@v4
+              - name: Verify Matrix.OS
+                run: |
+                  echo "Matrix.OS: ${{ matrix.os }}"
+              # Set up Python 3.12
+              # actions/setup-python doesn't yet support ARM. For ARM use deadsnakes/action@v3.1.0
+              - if: ${{ matrix.os == 'ubuntu-latest' }}
+                name: Set up Python 3.12 ubuntu-latest
+                uses: actions/setup-python@v2
+                with:
+                  python-version: "3.12"
+              - name: Run PyWay Info
+                run: |
+                  echo "Running PyWay Info Workflow Demonstrator"
+                  echo "Repository: ${{ github.repository }}"
+                  echo "GitHub Event Name: ${{ github.event_name }}"
+                  echo "GitHub Event Path: ${{ github.event_path }}"
+                  echo "GitHub Workspace: ${{ github.workspace }}"
+                  python --version
+                  echo "Upgrading pip"
+                  python -m pip install --upgrade pip
+                  echo "Installing PyWay"
+                  pip install pyway
+                  echo "Running PyWay Info"
+                  echo "Environment variable database_type: ${{ env.database_type }}"
+                  echo "Environment variable database_username: ${{ env.database_username }}"
+                  echo "Environment variable database_host: ${{ env.database_host }}"
+                  echo "Environment variable database_port: ${{ env.database_port }}"
+                  echo "Environment variable database_name: ${{ env.database_name }}"
+                  pyway info --database-type ${{ env.database_type }} --database-username ${{ env.database_username }} --database-password ${{ env.database_password }} --database-host ${{ env.database_host }} --database-port ${{ env.database_port }} --database-name ${{ env.database_name }} --database-table ${{ env.database_table }}
+                  echo "PyWay Info Workflow Demonstrator finished."
+  
+```
+
+In the repository you will also find `pyway-validate.yml` and `pyway-migrate.ym` that are both variations of the above yaml file. The `pyway-migrate.yml` file differs in that the "on:" section includes information to trigger off on a push to either the `main` or `release-*` branches.
+
+As the names imply, validate will validate the SQL and migrate will migrate (or deploy) the SQL to the database.
 
