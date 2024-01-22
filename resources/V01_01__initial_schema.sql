@@ -8,9 +8,9 @@
 -- Note: the description needs to match the word regexp [A-Za-z0-9_]
 
 -- Create the sequence
-CREATE SEQUENCE country_sequence;
+CREATE SEQUENCE public.country_sequence;
 -- Create the table
-CREATE TABLE IF NOT EXISTS country (
+CREATE TABLE IF NOT EXISTS public.country (
   id int NOT NULL DEFAULT NEXTVAL ('country_sequence'),
   iso char(2) NOT NULL,
   name varchar(80) NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS country (
   PRIMARY KEY (id)
 )  ;
 -- Insert the data
-INSERT INTO country (id, iso, name, display_name, iso3, iso_number_code, telephone_country_code) VALUES
+INSERT INTO public.country (id, iso, name, display_name, iso3, iso_number_code, telephone_country_code) VALUES
 (1, 'AF', 'AFGHANISTAN', 'Afghanistan', 'AFG', 4, 93),
 (2, 'AL', 'ALBANIA', 'Albania', 'ALB', 8, 355),
 (3, 'DZ', 'ALGERIA', 'Algeria', 'DZA', 12, 213),
