@@ -32,28 +32,13 @@ jobs:
             - name: Veify Matrix.OS
               run: |
                 echo "Matrix.OS: ${{ matrix.os }}"
-            # Set up Python 3.9
-            # actions/setup-python doesn't yet support ARM so we are using deadsnakes/action@v3.1.0
+            # Set up Python 3.12
+            # actions/setup-python doesn't yet support ARM. For ARM use deadsnakes/action@v3.1.0
             - if: ${{ matrix.os == 'ubuntu-latest' }}
-              name: Set up Python 3.9 ubuntu-latest
+              name: Set up Python 3.12 ubuntu-latest
               uses: actions/setup-python@v2
               with:
-                python-version: "3.9"
-            - if: ${{ matrix.os == 'windows-latest' }}
-              name: Set up Python 3.9 windows-latest
-              uses: deadsnakes/action@v3.1.0
-              with:
-                python-version: "3.9"
-            - if: ${{ matrix.os == 'ubuntu-arm' }}
-              name: Set up Python 3.9 ubuntu-arm
-              uses: deadsnakes/action@v3.1.0
-              with:
-                python-version: "3.9"
-            - if: ${{ matrix.os == 'macos-latest' }}
-              name: Set up Python 3.9 macos-latest
-              uses: deadsnakes/action@v3.1.0
-              with:
-                python-version: "3.9"
+                python-version: "3.12"
             - name: Run PyWay Info
               run: |
                 echo "Running PyWay Info Workflow Demonstrator"
