@@ -9,7 +9,7 @@ env:
   database_type: postgres
   database_username: postgres
   database_password: ${{ secrets.DATABASE_PASSWORD }}
-  database_host: localhost
+  database_host: 4.255.89.123
   database_port: 5432
   database_name: app
   database_migration_dir: './sql'
