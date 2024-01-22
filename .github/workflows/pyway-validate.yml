@@ -28,7 +28,7 @@
                 # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
                 - name: Checkout repository
                   uses: actions/checkout@v4
-                - name: Veify Matrix.OS
+                - name: Verify Matrix.OS
                   run: |
                     echo "Matrix.OS: ${{ matrix.os }}"
                 # Set up Python 3.12
