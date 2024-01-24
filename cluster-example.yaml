@@ -1,3 +1,4 @@
+---
 # Example of PostgreSQL cluster
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
@@ -29,8 +30,8 @@ spec:
     #     - ReadWriteOnce
     #   resources:
     #     requests:
-    #       storage: 2Gi
-    #   storageClassName: postgres-storage
+    #       storage: 100Gi
+    #   storageClassName: azure-file-retain-dev
     #   #persistentVolumeName: pv-1
     #   volumeMode: Filesystem
   monitoring:
