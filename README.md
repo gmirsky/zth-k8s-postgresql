@@ -310,7 +310,7 @@ $(Resolve-DnsName myip.opendns.com -Server resolver3.opendns.com).IPAddress
 
 Use the following command to deploy the AKS single node cluster. For this tutorial all we need is a bare bones Kubernetes cluster. 
 
-All of this code is in the Azure subdirectory of this repository. Make sure that you are in the Azure subdirectory when you execute this command. Replace `108.29.92.98` with your external IP address you recieved from the `dig` or `Resolve-DnsNam` command above.
+All of this code is in the Azure subdirectory of this repository. Make sure that you are in the Azure subdirectory when you execute this command. Replace `108.29.92.98` with your external IP address you received from the `dig` or `Resolve-DnsName` command above.
 
 ```bash
 # Deploy template with in-line parameters 
@@ -1041,7 +1041,7 @@ prometheus-operated   ClusterIP   None         <none>        9090/TCP   22m
 
 Install the Nginx controller with the `dev/cluster-example-rw` service mapped to port 5432. This is our primary node that has read and write access to the PostgreSQL database cluster.
 
-We will map `dev/cluster-example-ro to port 5433 and `dev/cluster-example-r` mapped to port 5434. We can't have these services using the same port as the read/write node of the PostgreSQL database cluster. If you wish to have applications just access the read only replica of the PostgreSQL database cluster then point them to port 5433. The fial service is generally used by the backup process to backup data but it too can be used as a read only node.
+We will map `dev/cluster-example-ro to port 5433 /cluster-example-r` mapped to port 5434. We can't have these services using the same port as the read/write node of the PostgreSQL database cluster. If you wish to have applications just access the read only replica of the PostgreSQL database cluster then point them to port 5433. The final service is generally used by the backup process to backup data but it too can be used as a read only node.
 
 We will also map the Grafana web interface to port `8083` and the Prometheus web interface to port 9090.
 
@@ -1114,7 +1114,7 @@ If TLS is enabled for the Ingress, a Secret containing the certificate and key m
 
 #### Get the public IP the AKS load balancer 
 
-Using your Azure portal, navigate to the managed resource group (usually the same name as the resource group you specified for the AKS cluster but ending in -mrg) and find the loadbalancer (it is usually named Kubernetes) and drill down to the Frontend IP Configuration as shown below.
+Using your Azure portal, navigate to the managed resource group (usually the same name as the resource group you specified for the AKS cluster but ending in -mrg) and find the load balancer (it is usually named Kubernetes) and drill down to the Frontend IP Configuration as shown below.
 
 ![AksLoadBalancerFeConfig](./images/AksLoadBalancerFeConfig.png)
 
@@ -1136,7 +1136,7 @@ Now, let's  go to `http://4.156.216.212:9090` and open up the Prometheus web int
 
 ![prometheus](./images/prometheus.png)
 
-Now let's open up the Grafa web interface at `http://4.156.216.212` Log in with the user ID `admin` and the password `prom-operator` and navigate to dashboards.
+Now let's open up the Grafana web interface at `http://4.156.216.212` Log in with the user ID `admin` and the password `prom-operator` and navigate to dashboards.
 
 ![dashboards](./images/dashboards.png)
 
@@ -1243,7 +1243,7 @@ You can check if the local GitHub Actions runners were able to communicate with 
 
 ![GitHubRunners](./images/GitHubRunners.png)
 
-You can use this `demonstration-workflow.yml` to test the commuincation between your repoistory and your locally hosted runners. This workflow does nothing but print out some messages in the workflow. You can manually trigger this off via the GitHub Actions panel for the repository.
+You can use this `demonstration-workflow.yml` to test the communication between your repository and your locally hosted runners. This workflow does nothing but print out some messages in the workflow. You can manually trigger this off via the GitHub Actions panel for the repository.
 
 ```yaml
 ---
@@ -1359,7 +1359,7 @@ Gathering info...
 
 ```
 
-In the repository, you will also find `pyway-validate.yml` and `pyway-migrate.ym` that are both variations of the above yaml file. As the names imply, `pyway-validate.yml` will validate the SQL in the resources directory of the repository. Think of it as a dry run.
+In the repository, you will also find `pyway-validate.yml` and `pyway-migrate.yml` that are both variations of the above yaml file. As the names imply, `pyway-validate.yml` will validate the SQL in the resources directory of the repository. Think of it as a dry run.
 
 ```yaml
 ---
